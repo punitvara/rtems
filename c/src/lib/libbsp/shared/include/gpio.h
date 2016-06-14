@@ -947,6 +947,61 @@ extern rtems_status_code rtems_gpio_bsp_disable_interrupt(
 
 /** @} */
 
+extern void PWMSSTBClkEnable(unsigned int instance);
+extern void EHRPWMClockEnable(unsigned int baseAdd);
+extern void PWMSSModuleClkConfig(unsigned int instanceNum);
+extern void EHRPWMTimebaseClkConfig(unsigned int baseAddr,
+                             unsigned int tbClk,
+                             unsigned int moduleClk);
+void EHRPWMPWMOpFreqSet(unsigned int baseAddr,
+                        unsigned int tbClk,
+                        unsigned int pwmFreq,
+                        unsigned int counterDir,
+                        bool enableShadowWrite);
+
+extern void EHRPWMTimebaseSyncDisable(unsigned int baseAddr);
+extern void EHRPWMSyncOutModeSet(unsigned int baseAddr, unsigned int syncOutMode);
+extern void EHRPWMTBEmulationModeSet(unsigned int baseAddr, unsigned int mode);
+extern bool EHRPWMLoadCMPA(unsigned int baseAddr,
+                    unsigned int CMPAVal,
+                    bool enableShadowWrite,
+                    unsigned int ShadowToActiveLoadTrigger,
+                    bool OverwriteShadowFull);
+extern bool EHRPWMLoadCMPB(unsigned int baseAddr,
+                    unsigned int CMPBVal,
+                    bool enableShadowWrite,
+                    unsigned int ShadowToActiveLoadTrigger,
+                    bool OverwriteShadowFull);
+extern void EHRPWMConfigureAQActionOnB(unsigned int baseAddr,
+                                unsigned int zero,
+                                unsigned int period,
+                                unsigned int CAUp,
+                                unsigned int CADown,
+                                unsigned int CBUp,
+                                unsigned int CBDown,
+                                unsigned int SWForced);
+extern void EHRPWMConfigureAQActionOnA(unsigned int baseAddr,
+                                unsigned int zero,
+                                unsigned int period,
+                                unsigned int CAUp,
+                                unsigned int CADown,
+                                unsigned int CBUp,
+                                unsigned int CBDown,
+                                unsigned int SWForced);
+extern void EHRPWMDBOutput(unsigned int baseAddr, unsigned int DBgenOpMode);
+extern void EHRPWMChopperDisable(unsigned int baseAddr);
+extern void EHRPWMTZTripEventDisable(unsigned int baseAddr, bool osht_CBC);
+extern void EHRPWMETIntPrescale(unsigned int baseAddr, unsigned int prescale);
+extern void EHRPWMETIntSourceSelect(unsigned int baseAddr, unsigned int selectInt);
+extern void EHRPWMHRDisable(unsigned int baseAddr);
+extern void EPWMPinMuxSetup(void);
+extern int PWMSS_Setting(unsigned int baseAddr, float HZ, float dutyA, float dutyB);
+extern void ehrPWM_Disable(unsigned int baseAddr);
+extern void ehrPWM_Enable(unsigned int baseAddr);
+extern int PWMSS_TB_clock_check(unsigned int PWMSS_ID);
+extern int PWMSS_module_ctrl (unsigned int PWMSS_ID,int enable);
+extern void pwm_init(unsigned int baseAddr, unsigned int PWMSS_ID);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

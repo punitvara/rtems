@@ -62,6 +62,8 @@ AC_CHECK_SIZEOF([time_t])
 AC_CONFIG_FILES([Makefile
 base_sp/Makefile
 hello/Makefile
+pwm/Makefile
+tisw/Makefile
 loopback/Makefile
 minimum/Makefile
 fileio/Makefile
