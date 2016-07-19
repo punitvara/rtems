@@ -24,13 +24,96 @@
 #define LIBBSP_ARM_BEAGLE_I2C_H
 
 #include <rtems.h>
-
+#include <dev/i2c/i2c.h>
 #include <bsp.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
+#define BBB_I2C_SYSCLK 48000000
+#define BBB_I2C_INTERNAL_CLK 12000000
+#define BBB_I2C_SPEED_CLK 100000
+
+#define BBB_I2C_IRQ_ERROR \
+  (AM335X_I2C_IRQSTATUS_NACK \
+    | AM335X_I2C_IRQSTATUS_ROVR \
+    | AM335X_I2C_IRQSTATUS_AERR \
+    | AM335X_I2C_IRQSTATUS_AL \
+    | AM335X_I2C_IRQSTATUS_ARDY \
+    | AM335X_I2C_IRQSTATUS_RRDY \
+    | I2C_IRQSTATUS_XRDY)
+
+#define BBB_I2C_IRQ_USED \
+  ( BBB_I2C_IRQ_ERROR \
+    | AM335X_I2C_IRQSTATUS_AAS \
+    | AM335X_I2C_IRQSTATUS_BF \
+    | AM335X_I2C_IRQSTATUS_STC \
+    | AM335X_I2C_IRQSTATUS_GC \
+    | AM335X_I2C_IRQSTATUS_XDR \
+    | AM335X_I2C_IRQSTATUS_RDR)
+
+#define BBB_I2C_0_BUS_PATH "/dev/i2c-0"
+#define BBB_I2C_1_BUS_PATH "/dev/i2c-1"
+#define BBB_I2C_2_BUS_PATH "/dev/i2c-2"
+
+#define BBB_I2C0_IRQ 70
+#define BBB_I2C1_IRQ 71
+#define BBB_I2C2_IRQ 30
+
+#define MODE2 2
+#define MODE3 3
+typedef enum{
+  I2C0, 
+  I2C1,
+  I2C2,
+  I2C_COUNT
+}bbb_i2c_id_t;
+
+typedef struct i2c_regs
+{
+  unsigned short BBB_I2C_REVNB_LO;
+  unsigned short BBB_I2C_REVNB_HI;
+  unsigned short BBB_I2C_SYSC;
+  unsigned short BBB_I2C_IRQSTATUS_RAW;
+  unsigned short BBB_I2C_IRQSTATUS;
+  unsigned short BBB_I2C_IRQENABLE_SET;
+  unsigned short BBB_I2C_IRQENABLE_CLR;
+  unsigned short BBB_I2C_WE;
+  unsigned short BBB_I2C_DMARXENABLE_SET;
+  unsigned short BBB_I2C_DMATXENABLE_SET;
+  unsigned short BBB_I2C_DMARXENABLE_CLR;
+  unsigned short BBB_I2C_DMATXENABLE_CLR;
+  unsigned short BBB_I2C_DMARXWAKE_EN;
+  unsigned short BBB_I2C_DMATXWAKE_EN;
+  unsigned short BBB_I2C_SYSS;
+  unsigned short BBB_I2C_BUF;
+  unsigned short BBB_I2C_CNT;
+  unsigned short BBB_I2C_DATA;
+  unsigned short BBB_I2C_CON;
+  unsigned short BBB_I2C_OA;
+  unsigned short BBB_I2C_SA;
+  unsigned short BBB_I2C_PSC;
+  unsigned short BBB_I2C_SCLL;
+  unsigned short BBB_I2C_SCLH;
+  unsigned short BBB_I2C_SYSTEST;
+  unsigned short BBB_I2C_BUFSTAT;
+  unsigned short BBB_I2C_OA1;
+  unsigned short BBB_I2C_OA2;
+  unsigned short BBB_I2C_OA3;
+  unsigned short BBB_I2C_ACTOA;
+  unsigned short BBB_I2C_SBLOCK;
+}bbb_i2c_regs;
+
+typedef struct {
+  i2c_bus base;
+  volatile bbb_i2c_regs *regs;
+  uint32_t i2c_base_address;
+  i2c_msg *msgs;
+  rtems_id task_id;
+  rtems_vector_number irq;
+  bbb_i2c_id_t i2c_bus_id;
+}bbb_i2c_bus;
 
 /* I2C Configuration Register (I2C_CON): */
 
@@ -360,6 +443,34 @@ static inline rtems_status_code beagle_i2c_read(
 {
   return beagle_i2c_write_and_read(i2c, addr, NULL, 0, in, in_size);
 }
+
+bool am335x_i2c_pinmux(bbb_i2c_bus *bus);
+
+void am335x_i2c1_i2c2_module_clk_config(bbb_i2c_bus *bus);
+
+void am335x_i2c_reset(bbb_i2c_bus *bus);
+
+void am335x_i2c_set_address_size(const i2c_msg *msg);
+
+int am335x_i2c_transfer(
+  i2c_bus *base,
+  i2c_msg *msgs,
+  uint32_t msg_count
+);
+
+int am335x_i2c_set_clock(i2c_bus *base, unsigned long clock);
+
+void am335x_i2c_destroy(i2c_bus *base);
+
+int am335x_i2c_bus_register(
+  const char *bus_path,
+  uintptr_t register_base,
+  uint32_t input_clock,
+  rtems_vector_number irq,
+  bbb_i2c_id_t i2c_bus_number
+);
+
+
 
 #ifdef __cplusplus
 }
