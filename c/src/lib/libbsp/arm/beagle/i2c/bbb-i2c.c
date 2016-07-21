@@ -28,44 +28,9 @@ const uint32_t i2c_base_addrs[] = {AM335X_I2C0_BASE, AM335X_I2C1_BASE, AM335X_I2
 
 const int i2c_irq_num[] = {BBB_I2C0_IRQ, BBB_I2C1_IRQ , BBB_I2C2_IRQ};
 
-/*register definitions*/
-static bbb_i2c_regs am335x_i2c_regs = {
-  .BBB_I2C_REVNB_LO = AM335X_I2C_REVNB_LO,
-  .BBB_I2C_REVNB_HI = AM335X_I2C_REVNB_HI,
-  .BBB_I2C_SYSC = AM335X_I2C_SYSC,
-  .BBB_I2C_IRQSTATUS_RAW = AM335X_I2C_IRQSTATUS_RAW,
-  .BBB_I2C_IRQSTATUS = AM335X_I2C_IRQSTATUS,
-  .BBB_I2C_IRQENABLE_SET = AM335X_I2C_IRQENABLE_SET,
-  .BBB_I2C_IRQENABLE_CLR = AM335X_I2C_IRQENABLE_CLR,
-  .BBB_I2C_WE = AM335X_I2C_WE,
-  .BBB_I2C_DMARXENABLE_SET = AM335X_I2C_DMARXENABLE_SET,
-  .BBB_I2C_DMATXENABLE_SET = AM335X_I2C_DMATXENABLE_SET,
-  .BBB_I2C_DMARXENABLE_CLR = AM335X_I2C_DMARXENABLE_CLR,
-  .BBB_I2C_DMATXENABLE_CLR = AM335X_I2C_DMATXENABLE_CLR,
-  .BBB_I2C_DMARXWAKE_EN = AM335X_I2C_DMARXWAKE_EN,
-  .BBB_I2C_DMATXWAKE_EN = AM335X_I2C_DMATXWAKE_EN,
-  .BBB_I2C_SYSS = AM335X_I2C_SYSS,
-  .BBB_I2C_BUF = AM335X_I2C_BUF,
-  .BBB_I2C_CNT = AM335X_I2C_CNT,
-  .BBB_I2C_DATA = AM335X_I2C_DATA,
-  .BBB_I2C_CON = AM335X_I2C_CON,
-  .BBB_I2C_OA = AM335X_I2C_OA,
-  .BBB_I2C_SA = AM335X_I2C_SA,
-  .BBB_I2C_PSC = AM335X_I2C_PSC,
-  .BBB_I2C_SCLL = AM335X_I2C_SCLL,
-  .BBB_I2C_SCLH = AM335X_I2C_SCLH,
-  .BBB_I2C_SYSTEST = AM335X_I2C_SYSTEST,
-  .BBB_I2C_BUFSTAT = AM335X_I2C_BUFSTAT,
-  .BBB_I2C_OA1 = AM335X_I2C_OA1,
-  .BBB_I2C_OA2 = AM335X_I2C_OA2,
-  .BBB_I2C_OA3 = AM335X_I2C_OA3,
-  .BBB_I2C_ACTOA = AM335X_I2C_ACTOA,
-  .BBB_I2C_SBLOCK = AM335X_I2C_SBLOCK
-};
-
-static inline uint32_t get_reg_addr(uint32_t offset)
+static inline uint32_t get_reg_addr(bbb_i2c_bus *bus,uint32_t offset)
 {
-  return (bbb_i2c_bus.i2c_base_address + offset);
+  return (bus->i2c_base_address + offset);
 }
 
 bool am335x_i2c_pinmux(bbb_i2c_bus *bus)
@@ -143,6 +108,197 @@ this configuration, power domain sleep transition cannot happen.*/
 
   }
 }
+
+void I2C0ModuleClkConfig(void)
+{
+    /* Configuring L3 Interface Clocks. */
+
+    /* Writing to MODULEMODE field of CM_PER_L3_CLKCTRL register. */
+    REG(AM335X_CM_PER_ADDR + CM_PER_L3_CLKCTRL) |=
+          CM_PER_L3_CLKCTRL_MODULEMODE_ENABLE;
+
+    /* Waiting for MODULEMODE field to reflect the written value. */
+    while(CM_PER_L3_CLKCTRL_MODULEMODE_ENABLE !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3_CLKCTRL) &
+           CM_PER_L3_CLKCTRL_MODULEMODE));
+
+    /* Writing to MODULEMODE field of CM_PER_L3_INSTR_CLKCTRL register. */
+    REG(AM335X_CM_PER_ADDR + CM_PER_L3_INSTR_CLKCTRL) |=
+          CM_PER_L3_INSTR_CLKCTRL_MODULEMODE_ENABLE;
+
+    /* Waiting for MODULEMODE field to reflect the written value. */
+    while(CM_PER_L3_INSTR_CLKCTRL_MODULEMODE_ENABLE !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3_INSTR_CLKCTRL) &
+           CM_PER_L3_INSTR_CLKCTRL_MODULEMODE));
+
+    /* Writing to CLKTRCTRL field of CM_PER_L3_CLKSTCTRL register. */
+    REG(AM335X_CM_PER_ADDR + CM_PER_L3_CLKSTCTRL) |=
+          CM_PER_L3_CLKSTCTRL_CLKTRCTRL_SW_WKUP;
+
+    /* Waiting for CLKTRCTRL field to reflect the written value. */
+    while(CM_PER_L3_CLKSTCTRL_CLKTRCTRL_SW_WKUP !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3_CLKSTCTRL) &
+           CM_PER_L3_CLKSTCTRL_CLKTRCTRL));
+
+    /* Writing to CLKTRCTRL field of CM_PER_OCPWP_L3_CLKSTCTRL register. */
+    REG(AM335X_CM_PER_ADDR + CM_PER_OCPWP_L3_CLKSTCTRL) |=
+          CM_PER_OCPWP_L3_CLKSTCTRL_CLKTRCTRL_SW_WKUP;
+
+    /*Waiting for CLKTRCTRL field to reflect the written value. */
+    while(CM_PER_OCPWP_L3_CLKSTCTRL_CLKTRCTRL_SW_WKUP !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_OCPWP_L3_CLKSTCTRL) &
+           CM_PER_OCPWP_L3_CLKSTCTRL_CLKTRCTRL));
+
+    /* Writing to CLKTRCTRL field of CM_PER_L3S_CLKSTCTRL register. */
+    REG(AM335X_CM_PER_ADDR + CM_PER_L3S_CLKSTCTRL) |=
+          CM_PER_L3S_CLKSTCTRL_CLKTRCTRL_SW_WKUP;
+
+    /*Waiting for CLKTRCTRL field to reflect the written value. */
+    while(CM_PER_L3S_CLKSTCTRL_CLKTRCTRL_SW_WKUP !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3S_CLKSTCTRL) &
+           CM_PER_L3S_CLKSTCTRL_CLKTRCTRL));
+
+    /* Checking fields for necessary values.  */
+
+    /* Waiting for IDLEST field in CM_PER_L3_CLKCTRL register to be set to 0x0. */
+    while((CM_PER_L3_CLKCTRL_IDLEST_FUNC << CM_PER_L3_CLKCTRL_IDLEST_SHIFT)!=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3_CLKCTRL) &
+           CM_PER_L3_CLKCTRL_IDLEST));
+
+    /*
+    ** Waiting for IDLEST field in CM_PER_L3_INSTR_CLKCTRL register to attain the
+    ** desired value.
+    */
+    while((CM_PER_L3_INSTR_CLKCTRL_IDLEST_FUNC <<
+           CM_PER_L3_INSTR_CLKCTRL_IDLEST_SHIFT)!=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3_INSTR_CLKCTRL) &
+           CM_PER_L3_INSTR_CLKCTRL_IDLEST));
+
+    /*
+    ** Waiting for CLKACTIVITY_L3_GCLK field in CM_PER_L3_CLKSTCTRL register to
+    ** attain the desired value.
+    */
+    while(CM_PER_L3_CLKSTCTRL_CLKACTIVITY_L3_GCLK !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3_CLKSTCTRL) &
+           CM_PER_L3_CLKSTCTRL_CLKACTIVITY_L3_GCLK));
+
+    /*
+    ** Waiting for CLKACTIVITY_OCPWP_L3_GCLK field in CM_PER_OCPWP_L3_CLKSTCTRL
+    ** register to attain the desired value.
+    */
+    while(CM_PER_OCPWP_L3_CLKSTCTRL_CLKACTIVITY_OCPWP_L3_GCLK !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_OCPWP_L3_CLKSTCTRL) &
+           CM_PER_OCPWP_L3_CLKSTCTRL_CLKACTIVITY_OCPWP_L3_GCLK));
+
+    /*
+    ** Waiting for CLKACTIVITY_L3S_GCLK field in CM_PER_L3S_CLKSTCTRL register
+    ** to attain the desired value.
+    */
+    while(CM_PER_L3S_CLKSTCTRL_CLKACTIVITY_L3S_GCLK !=
+          (REG(AM335X_CM_PER_ADDR + CM_PER_L3S_CLKSTCTRL) &
+          CM_PER_L3S_CLKSTCTRL_CLKACTIVITY_L3S_GCLK));
+
+
+    /* Configuring registers related to Wake-Up region. */
+
+    /* Writing to MODULEMODE field of CM_WKUP_CONTROL_CLKCTRL register. */
+    REG(SOC_CM_WKUP_REGS + CM_WKUP_CONTROL_CLKCTRL) |=
+          CM_WKUP_CONTROL_CLKCTRL_MODULEMODE_ENABLE;
+
+    /* Waiting for MODULEMODE field to reflect the written value. */
+    while(CM_WKUP_CONTROL_CLKCTRL_MODULEMODE_ENABLE !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CONTROL_CLKCTRL) &
+           CM_WKUP_CONTROL_CLKCTRL_MODULEMODE));
+
+    /* Writing to CLKTRCTRL field of CM_PER_L3S_CLKSTCTRL register. */
+    REG(SOC_CM_WKUP_REGS + CM_WKUP_CLKSTCTRL) |=
+          CM_WKUP_CLKSTCTRL_CLKTRCTRL_SW_WKUP;
+
+    /*Waiting for CLKTRCTRL field to reflect the written value. */
+    while(CM_WKUP_CLKSTCTRL_CLKTRCTRL_SW_WKUP !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CLKSTCTRL) &
+           CM_WKUP_CLKSTCTRL_CLKTRCTRL));
+
+    /* Writing to CLKTRCTRL field of CM_L3_AON_CLKSTCTRL register. */
+    REG(SOC_CM_WKUP_REGS + CM_WKUP_CM_L3_AON_CLKSTCTRL) |=
+          CM_WKUP_CM_L3_AON_CLKSTCTRL_CLKTRCTRL_SW_WKUP;
+
+    /*Waiting for CLKTRCTRL field to reflect the written value. */
+    while(CM_WKUP_CM_L3_AON_CLKSTCTRL_CLKTRCTRL_SW_WKUP !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CM_L3_AON_CLKSTCTRL) &
+           CM_WKUP_CM_L3_AON_CLKSTCTRL_CLKTRCTRL));
+
+    /* Writing to MODULEMODE field of CM_WKUP_I2C0_CLKCTRL register. */
+    REG(SOC_CM_WKUP_REGS + CM_WKUP_I2C0_CLKCTRL) |=
+          CM_WKUP_I2C0_CLKCTRL_MODULEMODE_ENABLE;
+
+    /* Waiting for MODULEMODE field to reflect the written value. */
+    while(CM_WKUP_I2C0_CLKCTRL_MODULEMODE_ENABLE !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_I2C0_CLKCTRL) &
+           CM_WKUP_I2C0_CLKCTRL_MODULEMODE));
+
+    /* Verifying if the other bits are set to required settings. */
+
+    /*
+    ** Waiting for IDLEST field in CM_WKUP_CONTROL_CLKCTRL register to attain
+    ** desired value.
+    */
+    while((CM_WKUP_CONTROL_CLKCTRL_IDLEST_FUNC <<
+           CM_WKUP_CONTROL_CLKCTRL_IDLEST_SHIFT) !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CONTROL_CLKCTRL) &
+           CM_WKUP_CONTROL_CLKCTRL_IDLEST));
+
+    /*
+    ** Waiting for CLKACTIVITY_L3_AON_GCLK field in CM_L3_AON_CLKSTCTRL
+    ** register to attain desired value.
+    */
+    while(CM_WKUP_CM_L3_AON_CLKSTCTRL_CLKACTIVITY_L3_AON_GCLK !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CM_L3_AON_CLKSTCTRL) &
+           CM_WKUP_CM_L3_AON_CLKSTCTRL_CLKACTIVITY_L3_AON_GCLK));
+
+    /*
+    ** Waiting for IDLEST field in CM_WKUP_L4WKUP_CLKCTRL register to attain
+    ** desired value.
+    */
+    while((CM_WKUP_L4WKUP_CLKCTRL_IDLEST_FUNC <<
+           CM_WKUP_L4WKUP_CLKCTRL_IDLEST_SHIFT) !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_L4WKUP_CLKCTRL) &
+           CM_WKUP_L4WKUP_CLKCTRL_IDLEST));
+
+    /*
+    ** Waiting for CLKACTIVITY_L4_WKUP_GCLK field in CM_WKUP_CLKSTCTRL register
+    ** to attain desired value.
+    */
+    while(CM_WKUP_CLKSTCTRL_CLKACTIVITY_L4_WKUP_GCLK !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CLKSTCTRL) &
+           CM_WKUP_CLKSTCTRL_CLKACTIVITY_L4_WKUP_GCLK));
+
+    /*
+    ** Waiting for CLKACTIVITY_L4_WKUP_AON_GCLK field in CM_L4_WKUP_AON_CLKSTCTRL
+    ** register to attain desired value.
+    */
+    while(CM_WKUP_CM_L4_WKUP_AON_CLKSTCTRL_CLKACTIVITY_L4_WKUP_AON_GCLK !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CM_L4_WKUP_AON_CLKSTCTRL) &
+           CM_WKUP_CM_L4_WKUP_AON_CLKSTCTRL_CLKACTIVITY_L4_WKUP_AON_GCLK));
+
+    /*
+    ** Waiting for CLKACTIVITY_I2C0_GFCLK field in CM_WKUP_CLKSTCTRL
+    ** register to attain desired value.
+    */
+    while(CM_WKUP_CLKSTCTRL_CLKACTIVITY_I2C0_GFCLK !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_CLKSTCTRL) &
+           CM_WKUP_CLKSTCTRL_CLKACTIVITY_I2C0_GFCLK));
+
+    /*
+    ** Waiting for IDLEST field in CM_WKUP_I2C0_CLKCTRL register to attain
+    ** desired value.
+    */
+    while((CM_WKUP_I2C0_CLKCTRL_IDLEST_FUNC <<
+           CM_WKUP_I2C0_CLKCTRL_IDLEST_SHIFT) !=
+          (REG(SOC_CM_WKUP_REGS + CM_WKUP_I2C0_CLKCTRL) &
+           CM_WKUP_I2C0_CLKCTRL_IDLEST));
+}
+
 /*
 void am335x_i2c_init(bbb_i2c_bus *bus, uint32_t input_clock)
 {
@@ -225,7 +381,6 @@ int am335x_i2c_bus_register(
   uintptr_t register_base,
   uint32_t input_clock,
   rtems_vector_number irq,
-  bbb_i2c_id_t i2c_bus_number
 )
 {
   bbb_i2c_bus *bus;
@@ -237,9 +392,11 @@ int am335x_i2c_bus_register(
   if (bus == NULL) {
     return -1;
   }
+
+  I2C0ModuleClkConfig();
   bus->i2c_bus_id = i2c_bus_number;
   bus->i2c_base_address = i2c_base_addrs[i2c_bus_number]; 
-  bus->regs = &am335_i2c_regs; // beagle_i2c_regs ?? // How to use register_base here 
+  //bus->regs = &am335_i2c_regs; // beagle_i2c_regs ?? // How to use register_base here 
   bus->input_clock = input_clock; // By default 100KHz. Normally pass 100KHz as argument 
   bus->irq = irq;
   
@@ -254,7 +411,7 @@ int am335x_i2c_bus_register(
   rtems_set_errno_and_return_minus_one(-err);
   }
 
-  sc  = rtems_interrupt_handler_install(
+/*  sc  = rtems_interrupt_handler_install(
     irq,
     "BBB I2C",
     RTEMS_INTERRUPT_UNIQUE,
@@ -266,10 +423,10 @@ int am335x_i2c_bus_register(
  
     rtems_set_errno_and_return_minux_one(EIO);
   }
- 
-  bus->base.transfer = am335x_i2c_transfer;
+ */
+//  bus->base.transfer = am335x_i2c_transfer;
   bus->base.set_clock = am335x_i2c_set_clock;
-  bus->base.destroy = am335x_i2c_destroy;
+ // bus->base.destroy = am335x_i2c_destroy;
   return i2c_bus_register(&bus->base,bus_path);
 }
 

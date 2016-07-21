@@ -105,7 +105,7 @@ typedef struct i2c_regs
   unsigned short BBB_I2C_SBLOCK;
 }bbb_i2c_regs;
 
-typedef struct {
+typedef struct bbb_i2c_bus{
   i2c_bus base;
   volatile bbb_i2c_regs *regs;
   uint32_t i2c_base_address;
@@ -113,7 +113,38 @@ typedef struct {
   rtems_id task_id;
   rtems_vector_number irq;
   bbb_i2c_id_t i2c_bus_id;
+  uint32_t input_clock;
 }bbb_i2c_bus;
+
+static inline int bbb_register_i2c_0(void)
+{
+  return am335x_i2c_bus_register(
+    BBB_I2C_0_BUS_PATH,
+    AM335X_I2C0_BASE,
+    I2C_BUS_CLOCK_DEFAULT,
+    BBB_I2C0_IRQ
+  );
+}
+
+static inline int bbb_register_i2c_1(void)
+{
+  return am335x_i2c_bus_register(
+    BBB_I2C_1_BUS_PATH,
+    AM335X_I2C1_BASE,
+    I2C_BUS_CLOCK_DEFAULT,
+    BBB_I2C1_IRQ
+  );
+}
+
+static inline int bbb_register_i2c_2(void)
+{
+  return am335x_i2c_bus_register(
+    BBB_I2C_2_BUS_PATH,
+    AM335X_I2C2_BASE,
+    I2C_BUS_CLOCK_DEFAULT,
+    BBB_I2C2_IRQ
+  );
+}
 
 /* I2C Configuration Register (I2C_CON): */
 
@@ -469,8 +500,6 @@ int am335x_i2c_bus_register(
   rtems_vector_number irq,
   bbb_i2c_id_t i2c_bus_number
 );
-
-
 
 #ifdef __cplusplus
 }
