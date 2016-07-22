@@ -63,13 +63,14 @@ extern "C" {
 
 #define MODE2 2
 #define MODE3 3
-typedef enum{
+
+typedef enum bbb_i2c_id{
   I2C0, 
   I2C1,
   I2C2,
   I2C_COUNT
 }bbb_i2c_id_t;
-
+/*
 typedef struct i2c_regs
 {
   unsigned short BBB_I2C_REVNB_LO;
@@ -104,18 +105,92 @@ typedef struct i2c_regs
   unsigned short BBB_I2C_ACTOA;
   unsigned short BBB_I2C_SBLOCK;
 }bbb_i2c_regs;
+*/
+typedef struct i2c_regs
+{
+  uint32_t BBB_I2C_REVNB_LO; // 0h
+  uint32_t BBB_I2C_REVNB_HI; //4h
+  uint32_t dummy1[2];
+  uint32_t BBB_I2C_SYSC;  // 10h =16
+  uint32_t dummy2[4]; 
+  uint32_t BBB_I2C_IRQSTATUS_RAW;  //24h =36
+  uint32_t BBB_I2C_IRQSTATUS;  //28h =40
+  uint32_t BBB_I2C_IRQENABLE_SET;  //2Ch =44
+  uint32_t BBB_I2C_IRQENABLE_CLR; //30h =48
+  uint32_t BBB_I2C_WE;  // 34h = 52
+  uint32_t BBB_I2C_DMARXENABLE_SET; //38h = 56
+  uint32_t BBB_I2C_DMATXENABLE_SET;  //3Ch = 60
+  uint32_t BBB_I2C_DMARXENABLE_CLR;  //40h = 64
+  uint32_t BBB_I2C_DMATXENABLE_CLR;  //44h = 68
+  uint32_t BBB_I2C_DMARXWAKE_EN;  //48h = 72
+  uint32_t BBB_I2C_DMATXWAKE_EN;  //4Ch =76
+  uint32_t dummy3[16];
+  uint32_t BBB_I2C_SYSS;  // 90h =144
+  uint32_t BBB_I2C_BUF;  // 94h =148
+  uint32_t BBB_I2C_CNT;  // 98h =152
+  uint32_t BBB_I2C_DATA; //9Ch =156
+  uint32_t dummy4;
+  uint32_t BBB_I2C_CON;  // A4h = 164 
+  uint32_t BBB_I2C_OA;  //A8h = 168
+  uint32_t BBB_I2C_SA;  //ACh = 172
+  uint32_t BBB_I2C_PSC;  //B0h = 176
+  uint32_t BBB_I2C_SCLL;  //B4h = 180
+  uint32_t BBB_I2C_SCLH;  //B8h = 184
+  uint32_t BBB_I2C_SYSTEST;  //BCh = 188
+  uint32_t BBB_I2C_BUFSTAT;  //C0h 192
+  uint32_t BBB_I2C_OA1;  //C4h 196
+  uint32_t BBB_I2C_OA2;  //C8h 200
+  uint32_t BBB_I2C_OA3;  //CCh 204
+  uint32_t BBB_I2C_ACTOA;  //D0h 208
+  uint32_t BBB_I2C_SBLOCK;  //D4h 212
+}bbb_i2c_regs;
 
 typedef struct bbb_i2c_bus{
   i2c_bus base;
   volatile bbb_i2c_regs *regs;
-  uint32_t i2c_base_address;
+  //uint32_t i2c_base_address;
   i2c_msg *msgs;
   rtems_id task_id;
   rtems_vector_number irq;
   bbb_i2c_id_t i2c_bus_id;
   uint32_t input_clock;
 }bbb_i2c_bus;
-
+/*
+bbb_i2c_bus devices[I2C_COUNT] =
+{
+{
+.base = ,
+.regs = AM335X_I2C0_BASE, 
+.msgs = ,
+.task_id = ,
+.irq = BBB_I2C0_IRQ,
+.input_clock = I2C_BUS_CLOCK_DEFAULT
+},
+{
+.base = ,
+.regs = AM335X_I2C1_BASE,
+.msgs = ,
+.task_id = ,
+.irq = BBB_I2C1_IRQ,
+.input_clock = I2C_BUS_CLOCK_DEFAULT
+},
+{
+.base = ,
+.regs = AM335X_I2C2_BASE,
+.msgs = ,
+.task_id = ,
+.irq = BBB_I2C2_IRQ,
+.input_clock = I2C_BUS_CLOCK_DEFAULT
+}
+} 
+*/
+/*
+void deviceInit(bbb_i2c_id_t i2c_id)
+{
+bbb_i2c_bus *bus = &devices[i2c_id];
+bus->regs->BBB_I2C_IRQSTATUS_RAW = value; 
+}
+*/
 static inline int bbb_register_i2c_0(void)
 {
   return am335x_i2c_bus_register(
@@ -259,221 +334,6 @@ static inline int bbb_register_i2c_2(void)
 #define CONFIG_SYS_I2C_SPEED    100000
 #define CONFIG_SYS_I2C_SLAVE    1
 
-struct i2c {
-  unsigned short rev;   /* 0x00 */
-  unsigned short res1;
-  unsigned short ie;    /* 0x04 */
-  unsigned short res2;
-  unsigned short stat;  /* 0x08 */
-  unsigned short res3;
-  unsigned short iv;    /* 0x0C */
-  unsigned short res4;
-  unsigned short syss;  /* 0x10 */
-  unsigned short res4a;
-  unsigned short buf;   /* 0x14 */
-  unsigned short res5;
-  unsigned short cnt;   /* 0x18 */
-  unsigned short res6;
-  unsigned short data;  /* 0x1C */
-  unsigned short res7;
-  unsigned short sysc;  /* 0x20 */
-  unsigned short res8;
-  unsigned short con;   /* 0x24 */
-  unsigned short res9;
-  unsigned short oa;    /* 0x28 */
-  unsigned short res10;
-  unsigned short sa;    /* 0x2C */
-  unsigned short res11;
-  unsigned short psc;   /* 0x30 */
-  unsigned short res12;
-  unsigned short scll;  /* 0x34 */
-  unsigned short res13;
-  unsigned short sclh;  /* 0x38 */
-  unsigned short res14;
-  unsigned short systest; /* 0x3c */
-  unsigned short res15;
-};
-
-static unsigned short wait_for_pin( void );
-
-static void wait_for_bb( void );
-
-static void flush_fifo( void );
-
-void i2c_init( int speed, int slaveadd );
-
-static int i2c_read_byte(
-  unsigned char devaddr,
-  unsigned char regoffset,
-  unsigned char *value
-);
-
-int i2c_write(
-  unsigned char chip,
-  unsigned int addr,
-  int alen,
-  unsigned char *buffer,
-  int len
-);
-
-int i2c_read(
-  unsigned char chip,
-  uint addr,
-  int alen,
-  unsigned char *buffer,
-  int len
-);
-
-static int imw ( unsigned char  chip, unsigned long addr, unsigned char byte );
-
-static int imd( unsigned char chip, unsigned int addr, unsigned int length );
-
-/**
- * @brief Initializes the I2C module @a i2c.
- *
- * Valid @a clock_in_hz values are 100000 and 400000.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_INVALID_ID Invalid @a i2c value.
- * @retval RTEMS_INVALID_CLOCK Invalid @a clock_in_hz value.
- */
-rtems_status_code beagle_i2c_init(
-  volatile beagle_i2c *i2c,
-  unsigned clock_in_hz
-);
-
-/**
- * @brief Resets the I2C module @a i2c.
- */
-void beagle_i2c_reset(volatile beagle_i2c *i2c);
-
-/**
- * @brief Sets the I2C module @a i2c clock.
- *
- * Valid @a clock_in_hz values are 100000 and 400000.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_INVALID_CLOCK Invalid @a clock_in_hz value.
- */
-rtems_status_code beagle_i2c_clock(
-  volatile beagle_i2c *i2c,
-  unsigned clock_in_hz
-);
-
-/**
- * @brief Starts a write transaction on the I2C module @a i2c.
- *
- * The address parameter @a addr must not contain the read/write bit.
- *
- * The error status may be delayed to the next
- * beagle_i2c_write_with_optional_stop() due to controller flaws.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_IO_ERROR Received a NACK from the slave.
- */
-rtems_status_code beagle_i2c_write_start(
-  volatile beagle_i2c *i2c,
-  unsigned addr
-);
-
-/**
- * @brief Writes data via the I2C module @a i2c with optional stop.
- *
- * The error status may be delayed to the next
- * beagle_i2c_write_with_optional_stop() due to controller flaws.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_IO_ERROR Received a NACK from the slave.
- */
-rtems_status_code beagle_i2c_write_with_optional_stop(
-  volatile beagle_i2c *i2c,
-  const uint8_t *out,
-  size_t n,
-  bool stop
-);
-
-/**
- * @brief Starts a read transaction on the I2C module @a i2c.
- *
- * The address parameter @a addr must not contain the read/write bit.
- *
- * The error status may be delayed to the next
- * beagle_i2c_read_with_optional_stop() due to controller flaws.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_IO_ERROR Received a NACK from the slave.
- */
-rtems_status_code beagle_i2c_read_start(
-  volatile beagle_i2c *i2c,
-  unsigned addr
-);
-
-/**
- * @brief Reads data via the I2C module @a i2c with optional stop.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_IO_ERROR Received a NACK from the slave.
- * @retval RTEMS_NOT_IMPLEMENTED Stop is @a false.
- */
-rtems_status_code beagle_i2c_read_with_optional_stop(
-  volatile beagle_i2c *i2c,
-  uint8_t *in,
-  size_t n,
-  bool stop
-);
-
-/**
- * @brief Writes and reads data via the I2C module @a i2c.
- *
- * This will be one bus transaction.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_IO_ERROR Received a NACK from the slave.
- */
-rtems_status_code beagle_i2c_write_and_read(
-  volatile beagle_i2c *i2c,
-  unsigned addr,
-  const uint8_t *out,
-  size_t out_size,
-  uint8_t *in,
-  size_t in_size
-);
-
-/**
- * @brief Writes data via the I2C module @a i2c.
- *
- * This will be one bus transaction.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_IO_ERROR Received a NACK from the slave.
- */
-static inline rtems_status_code beagle_i2c_write(
-  volatile beagle_i2c *i2c,
-  unsigned addr,
-  const uint8_t *out,
-  size_t out_size
-)
-{
-  return beagle_i2c_write_and_read(i2c, addr, out, out_size, NULL, 0);
-}
-
-/**
- * @brief Reads data via the I2C module @a i2c.
- *
- * This will be one bus transaction.
- *
- * @retval RTEMS_SUCCESSFUL Successful operation.
- * @retval RTEMS_IO_ERROR Received a NACK from the slave.
- */
-static inline rtems_status_code beagle_i2c_read(
-  volatile beagle_i2c *i2c,
-  unsigned addr,
-  uint8_t *in,
-  size_t in_size
-)
-{
-  return beagle_i2c_write_and_read(i2c, addr, NULL, 0, in, in_size);
-}
 
 bool am335x_i2c_pinmux(bbb_i2c_bus *bus);
 
@@ -481,24 +341,13 @@ void am335x_i2c1_i2c2_module_clk_config(bbb_i2c_bus *bus);
 
 void am335x_i2c_reset(bbb_i2c_bus *bus);
 
-void am335x_i2c_set_address_size(const i2c_msg *msg);
-
-int am335x_i2c_transfer(
-  i2c_bus *base,
-  i2c_msg *msgs,
-  uint32_t msg_count
-);
-
 int am335x_i2c_set_clock(i2c_bus *base, unsigned long clock);
-
-void am335x_i2c_destroy(i2c_bus *base);
 
 int am335x_i2c_bus_register(
   const char *bus_path,
   uintptr_t register_base,
   uint32_t input_clock,
-  rtems_vector_number irq,
-  bbb_i2c_id_t i2c_bus_number
+  rtems_vector_number irq
 );
 
 #ifdef __cplusplus

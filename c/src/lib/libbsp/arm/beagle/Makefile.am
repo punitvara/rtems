@@ -112,9 +112,6 @@ libbsp_a_SOURCES += ../../shared/console.c \
         ../../shared/console_write.c \
         ../../shared/console_control.c
 
-# I2C
-libbsp_a_SOURCES += misc/i2c.c
-
 #NEW_I2C
 libbsp_a_SOURCES += i2c/bbb-i2c.c
 
