@@ -180,19 +180,7 @@ struct i2c {
   unsigned short res15;
 };
 
-static unsigned short wait_for_pin( void );
-
-static void wait_for_bb( void );
-
-static void flush_fifo( void );
-
 void i2c_init( int speed, int slaveadd );
-
-static int i2c_read_byte(
-  unsigned char devaddr,
-  unsigned char regoffset,
-  unsigned char *value
-);
 
 int i2c_write(
   unsigned char chip,
@@ -209,10 +197,6 @@ int i2c_read(
   unsigned char *buffer,
   int len
 );
-
-static int imw ( unsigned char  chip, unsigned long addr, unsigned char byte );
-
-static int imd( unsigned char chip, unsigned int addr, unsigned int length );
 
 /**
  * @brief Initializes the I2C module @a i2c.
