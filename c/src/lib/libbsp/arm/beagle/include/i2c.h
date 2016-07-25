@@ -352,11 +352,11 @@ static inline rtems_status_code beagle_i2c_read(
 #define BBB_I2C_IRQ_ERROR \
   (AM335X_I2C_IRQSTATUS_NACK \
     | AM335X_I2C_IRQSTATUS_ROVR \
-    | AM335X_I2C_IRQSTATUS_AERR \
     | AM335X_I2C_IRQSTATUS_AL \
     | AM335X_I2C_IRQSTATUS_ARDY \
     | AM335X_I2C_IRQSTATUS_RRDY \
-    | I2C_IRQSTATUS_XRDY)
+    | AM335X_I2C_IRQSTATUS_XRDY \
+    | AM335X_I2C_IRQSTATUS_XUDF)
 
 #define BBB_I2C_IRQ_USED \
   ( BBB_I2C_IRQ_ERROR \
@@ -430,6 +430,7 @@ typedef struct bbb_i2c_bus{
   volatile bbb_i2c_regs *regs;
   //uint32_t i2c_base_address;
   i2c_msg *msgs;
+  uint32_t msg_todo;
   rtems_id task_id;
   rtems_vector_number irq;
   bbb_i2c_id_t i2c_bus_id;
@@ -442,6 +443,37 @@ int am335x_i2c_bus_register(
   uint32_t input_clock,
   rtems_vector_number irq
 );
+
+static inline int bbb_register_i2c_0(void)
+{
+  return am335x_i2c_bus_register(
+    BBB_I2C_0_BUS_PATH,
+    AM335X_I2C0_BASE,
+    I2C_BUS_CLOCK_DEFAULT,
+    BBB_I2C0_IRQ
+  );
+}
+
+static inline int bbb_register_i2c_1(void)
+{
+  return am335x_i2c_bus_register(
+    BBB_I2C_1_BUS_PATH,
+    AM335X_I2C1_BASE,
+    I2C_BUS_CLOCK_DEFAULT,
+    BBB_I2C1_IRQ
+  );
+}
+
+static inline int bbb_register_i2c_2(void)
+{
+  return am335x_i2c_bus_register(
+    BBB_I2C_2_BUS_PATH,
+    AM335X_I2C2_BASE,
+    I2C_BUS_CLOCK_DEFAULT,
+    BBB_I2C2_IRQ
+  );
+}
+
 
 #ifdef __cplusplus
 }
