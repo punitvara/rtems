@@ -431,11 +431,16 @@ typedef struct bbb_i2c_bus{
   //uint32_t i2c_base_address;
   i2c_msg *msgs;
   uint32_t msg_todo;
+  uint32_t current_msg_todo;
+  uint8_t *current_msg_byte;
+  uint32_t current_todo;
+  bool read;
+  bool hold;
   rtems_id task_id;
   rtems_vector_number irq;
   bbb_i2c_id_t i2c_bus_id;
   uint32_t input_clock;
-}bbb_i2c_bus;
+  }bbb_i2c_bus;
 
 int am335x_i2c_bus_register(
   const char *bus_path,
