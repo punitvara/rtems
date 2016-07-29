@@ -373,6 +373,10 @@ static void am335x_i2c_masterint_enable(volatile bbb_i2c_regs *regs, unsigned in
   regs->BBB_I2C_IRQENABLE_SET |= flag;
 }
 
+static void am335x_i2c_masterint_disable(volatile bbb_i2c_regs *regs, unsigned int flag)
+{
+  regs->BBB_I2C_IRQENABLE_CLR = flag;	
+}
 static void am335x_i2c_setup_read_transfer(volatile bbb_i2c_regs *regs, bool send_stop)
 {
   am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY);
@@ -387,52 +391,23 @@ static void am335x_i2c_disable_interrupts(volatile bbb_i2c_regs *regs)
 {
   regs->BBB_I2C_IRQSTATUS = 0x00000000;
 }
-/*
+
 static void am335x_i2c_continue_read_transfer(
   bbb_i2c_bus *bus,
   volatile bbb_i2c_regs *regs
   )
-{
-
+{ 
+  int count =0;
+  bus->current_msg_byte[count] = regs->BBB_I2C_DATA;
+  count++;
+  if (count == bus->current_msg_todo) {
+    am335x_i2c_setup_read_transfer(regs,false);
+    am335x_i2c_masterint_disable(regs, AM335X_I2C_INT_RECV_READY);
+    
+  }
 }
-*/ 
-static void am335x_i2c_interrupt(void *arg)
-{
-  bbb_i2c_bus *bus = arg;
-  volatile bbb_i2c_regs *regs = bus->regs;
-  uint32_t irqstatus = regs->BBB_I2C_IRQSTATUS;
-  bool done = false;
 
-  /* Make sure that all interrupt registers are cleared here */
-  /* Clear interrupt */
-  regs->BBB_I2C_IRQSTATUS = irqstatus;
-  /* should consider timeout in following condition */
-  /*Only error interrupt condition checked. Other interrupt bits yet to checked */
-  if ((irqstatus & (AM335X_I2C_IRQSTATUS_AL | AM335X_I2C_IRQSTATUS_NACK)) != 0) {
-    done = true;
-  }
-  if (irqstatus & AM335X_I2C_INT_RECV_READY) {
-    //am335x_i2c_continue_read_transfer(bus, regs);
-  }
-
-  if (done) {
-    uint32_t err = irqstatus & BBB_I2C_IRQ_ERROR;
-  
-    if (bus->msg_todo == 0 || err != 0) {
-    rtems_status_code sc;
-  
-    am335x_i2c_disable_interrupts(regs);
-  
-    regs->BBB_I2C_IRQSTATUS = err;
-  
-    sc = rtems_event_transient_send(bus->task_id);
-    _Assert(sc == RTEMS_SUCCESSFUL);
-    (void) sc;
-    } else {
-      //am335x_i2c_setup_transfer(bus, regs);
-    }
-  }
-} 
+ 
 
 static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs)
 {
@@ -466,6 +441,43 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
   
 }
 
+static void am335x_i2c_interrupt(void *arg)
+{
+  bbb_i2c_bus *bus = arg;
+  volatile bbb_i2c_regs *regs = bus->regs;
+  uint32_t irqstatus = regs->BBB_I2C_IRQSTATUS;
+  bool done = false;
+
+  /* Make sure that all interrupt registers are cleared here */
+  /* Clear interrupt */
+  regs->BBB_I2C_IRQSTATUS = irqstatus;
+  /* should consider timeout in following condition */
+  /*Only error interrupt condition checked. Other interrupt bits yet to checked */
+  if ((irqstatus & (AM335X_I2C_IRQSTATUS_AL | AM335X_I2C_IRQSTATUS_NACK)) != 0) {
+    done = true;
+  }
+  if (irqstatus & AM335X_I2C_INT_RECV_READY) {
+    am335x_i2c_continue_read_transfer(bus, regs);
+  }
+
+  if (done) {
+    uint32_t err = irqstatus & BBB_I2C_IRQ_ERROR;
+  
+    if (bus->msg_todo == 0 || err != 0) {
+    rtems_status_code sc;
+  
+    am335x_i2c_disable_interrupts(regs);
+  
+    regs->BBB_I2C_IRQSTATUS = err;
+  
+    sc = rtems_event_transient_send(bus->task_id);
+    _Assert(sc == RTEMS_SUCCESSFUL);
+    (void) sc;
+    } else {
+      am335x_i2c_setup_transfer(bus, regs);
+    }
+  }
+}
 static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
 {
   rtems_status_code sc;
