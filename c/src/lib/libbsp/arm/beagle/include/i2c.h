@@ -440,6 +440,7 @@ typedef struct bbb_i2c_bus{
   rtems_vector_number irq;
   bbb_i2c_id_t i2c_bus_id;
   uint32_t input_clock;
+  int count;
   }bbb_i2c_bus;
 
 int am335x_i2c_bus_register(

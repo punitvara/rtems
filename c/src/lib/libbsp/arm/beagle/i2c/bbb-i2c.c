@@ -397,17 +397,15 @@ static void am335x_i2c_continue_read_transfer(
   volatile bbb_i2c_regs *regs
   )
 { 
-  int count =0;
-  bus->current_msg_byte[count] = regs->BBB_I2C_DATA;
-  count++;
-  if (count == bus->current_msg_todo) {
+  bus->count =0;
+  bus->current_msg_byte[bus->count] = regs->BBB_I2C_DATA;
+  bus->count++;
+  if (bus->count == bus->current_msg_todo) {
     am335x_i2c_setup_read_transfer(regs,false);
     am335x_i2c_masterint_disable(regs, AM335X_I2C_INT_RECV_READY);
     
   }
 }
-
- 
 
 static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs)
 {
@@ -433,6 +431,9 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
   bus->read = (msgs->flags & I2C_M_RD) != 0; 
   if (bus->read) {
   //am335x_i2c_set_transfer_status(); 
+    if (bus->current_msg_todo == 1) {
+      send_stop = true;
+    }
     am335x_i2c_setup_read_transfer(regs, send_stop);
   } else {
   //am335x_i2c_set_transfer_status();
