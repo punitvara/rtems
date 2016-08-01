@@ -100,6 +100,14 @@ this configuration, power domain sleep transition cannot happen.*/
   }
 }
 */
+static void am335x_i2c0_pinmux(bbb_i2c_bus *bus)
+{
+REG(bus->i2c_base_address + AM335X_CONF_I2C0_SDA) =  
+  (BBB_RXACTIVE | BBB_SLEWCTRL | BBB_PU_EN);
+
+REG(bus->i2c_base_address + AM335X_CONF_I2C0_SCL) = 
+  (BBB_RXACTIVE | BBB_SLEWCTRL | BBB_PU_EN); 
+}
 
 static void I2C0ModuleClkConfig(void)
 {
@@ -559,7 +567,8 @@ int am335x_i2c_bus_register(
   if (bus == NULL) {
     return -1;
   }
-
+  bus->i2c_base_address = register_base;
+  am335x_i2c0_pinmux(bus);
   I2C0ModuleClkConfig();
   bus->regs = (volatile bbb_i2c_regs *) register_base;
   bus->input_clock = input_clock; // By default 100KHz. Normally pass 100KHz as argument 
