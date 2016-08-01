@@ -428,7 +428,7 @@ typedef struct i2c_regs
 typedef struct bbb_i2c_bus{
   i2c_bus base;
   volatile bbb_i2c_regs *regs;
-  //uint32_t i2c_base_address;
+  uint32_t i2c_base_address;
   i2c_msg *msgs;
   uint32_t msg_todo;
   uint32_t current_msg_todo;
