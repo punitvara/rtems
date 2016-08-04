@@ -14,6 +14,7 @@
  * http://www.rtems.org/license/LICENSE.
  */
 
+#include <stdio.h>
 #include <bsp/i2c.h>
 #include <libcpu/am335x.h>
 #include <rtems/irq-extension.h>
@@ -100,12 +101,13 @@ this configuration, power domain sleep transition cannot happen.*/
   }
 }
 */
+
 static void am335x_i2c0_pinmux(bbb_i2c_bus *bus)
 {
-REG(bus->i2c_base_address + AM335X_CONF_I2C0_SDA) =  
+REG(bus->regs + AM335X_CONF_I2C0_SDA) =  
   (BBB_RXACTIVE | BBB_SLEWCTRL | BBB_PU_EN);
 
-REG(bus->i2c_base_address + AM335X_CONF_I2C0_SCL) = 
+REG(bus->regs + AM335X_CONF_I2C0_SCL) = 
   (BBB_RXACTIVE | BBB_SLEWCTRL | BBB_PU_EN); 
 }
 
@@ -307,15 +309,18 @@ void am335x_i2c_init(bbb_i2c_bus *bus, uint32_t input_clock)
 }
 */
 /*Any suggestions to disable interrupt here*/
-static void am335x_i2c_reset(bbb_i2c_bus *bus)
+
+ static void am335x_i2c_reset(bbb_i2c_bus *bus)
 {
   volatile bbb_i2c_regs *regs = bus->regs;
-
+  printf("\n in bus->reg is %x \n",bus->regs);
   /* Disable I2C module at the time of initialization*/
   /*Should I use write32 ?? I guess mmio_clear is correct choice here*/
-  mmio_clear((regs->BBB_I2C_CON),AM335X_I2C_CON_I2C_EN);
-  mmio_clear((regs->BBB_I2C_SYSC),AM335X_I2C_SYSC_AUTOIDLE);
-
+  printf("\n inside reset value is %x \n",&regs->BBB_I2C_CON);
+  mmio_clear((&regs->BBB_I2C_CON),AM335X_I2C_CON_I2C_EN);
+  mmio_clear((&regs->BBB_I2C_SYSC),AM335X_I2C_SYSC_AUTOIDLE);  
+//REG(bus->regs + AM335X_I2C_CON) &= ~(AM335X_I2C_CON_I2C_EN);
+  //REG(bus->regs + AM335X_I2C_SYSC) &= ~(AM335X_I2C_SYSC_AUTOIDLE);
 /*
   can I clear all the interrupt here ?
   mmio_write(get_reg_addr(bbb_i2c_bus->reg->AM335X_I2C_IRQ_ENABLE_CLR), ??)
@@ -333,26 +338,15 @@ Possible values for msg->flag
    * - @ref I2C_M_NO_RD_ACK, and
    * - @ref I2C_M_RECV_LEN.
 */
-/*
-static void am335x_i2c_set_address_size(const i2c_msg *msg)
-{
-  bbb_i2c_bus *bus;
-  volatile bbb_i2c_regs *regs = bus->regs;
-  if ((msg->flags & I2C_M_TEN) == 0)  {
-    mmio_write(regs->BBB_I2C_CON,(AM335X_I2C_CFG_7BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN));
-  } else {
-    mmio_write(regs->BBB_I2C_CON,(AM335X_I2C_CFG_10BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN));
-  }
-}
-*/
+
 static void am335x_i2c_set_address_size(const i2c_msg *msgs,volatile bbb_i2c_regs *regs, uint16_t slave_addr)
 {
-   mmio_write(regs->BBB_I2C_CON, (slave_addr | AM335X_I2C_CON_I2C_EN));
+   mmio_write(&regs->BBB_I2C_CON, (slave_addr | AM335X_I2C_CON_I2C_EN));
 /*can be configured multiple modes here. Need to think about own address modes*/
   if ((msgs->flags & I2C_M_TEN) == 0)  {/* 7-bit mode slave address mode*/
-    mmio_write(regs->BBB_I2C_CON,(AM335X_I2C_CFG_7BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN));
+  mmio_write(&regs->BBB_I2C_CON,(AM335X_I2C_CFG_7BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN));  
   } else { /* 10-bit slave address mode*/
-    mmio_write(regs->BBB_I2C_CON,(AM335X_I2C_CFG_10BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN));
+  mmio_write(&regs->BBB_I2C_CON,(AM335X_I2C_CFG_10BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN));
   }
 }
 
@@ -378,26 +372,26 @@ static void am335x_i2c_next_byte(bbb_i2c_bus *bus)
 
 static void am335x_i2c_masterint_enable(volatile bbb_i2c_regs *regs, unsigned int flag)
 {
-  regs->BBB_I2C_IRQENABLE_SET |= flag;
+  REG(&regs->BBB_I2C_IRQENABLE_SET) |= flag;
 }
 
 static void am335x_i2c_masterint_disable(volatile bbb_i2c_regs *regs, unsigned int flag)
 {
-  regs->BBB_I2C_IRQENABLE_CLR = flag;	
+ REG(regs->BBB_I2C_IRQENABLE_CLR) = flag;	
 }
 static void am335x_i2c_setup_read_transfer(volatile bbb_i2c_regs *regs, bool send_stop)
 {
   am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY);
   if (send_stop) {
-    regs->BBB_I2C_CON |= AM335X_I2C_CON_STOP; 
+    REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP; 
   } else {
-    regs->BBB_I2C_CON |= AM335X_I2C_CON_START;
+    REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_START;
   }
 }
 
 static void am335x_i2c_disable_interrupts(volatile bbb_i2c_regs *regs)
 {
-  regs->BBB_I2C_IRQSTATUS = 0x00000000;
+  REG(&regs->BBB_I2C_IRQENABLE_CLR) = 0xFFFFFFFF;
 }
 
 static void am335x_i2c_continue_read_transfer(
@@ -431,8 +425,8 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
   slave_addr = msgs->addr; 
   regs = bus->regs;
   // Yet to decide which FIFO buffer to clear 
-  bus->regs->BBB_I2C_BUF |= AM335X_I2C_BUF_TXFIFO_CLR;
-  bus->regs->BBB_I2C_BUF |= AM335X_I2C_BUF_RXFIFO_CLR;
+  REG(&bus->regs->BBB_I2C_BUF) |= AM335X_I2C_BUF_TXFIFO_CLR;
+  REG(&bus->regs->BBB_I2C_BUF) |= AM335X_I2C_BUF_RXFIFO_CLR;
   bus->hold = i < msg_todo;
    // Depends on FIFO depth howmuch data should hold yet to decide
   am335x_i2c_set_address_size(msgs,regs,slave_addr);
@@ -459,7 +453,7 @@ static void am335x_i2c_interrupt(void *arg)
 
   /* Make sure that all interrupt registers are cleared here */
   /* Clear interrupt */
-  regs->BBB_I2C_IRQSTATUS = irqstatus;
+  REG(&regs->BBB_I2C_IRQSTATUS) = irqstatus;
   /* should consider timeout in following condition */
   /*Only error interrupt condition checked. Other interrupt bits yet to checked */
   if ((irqstatus & (AM335X_I2C_IRQSTATUS_AL | AM335X_I2C_IRQSTATUS_NACK)) != 0) {
@@ -477,7 +471,7 @@ static void am335x_i2c_interrupt(void *arg)
   
     am335x_i2c_disable_interrupts(regs);
   
-    regs->BBB_I2C_IRQSTATUS = err;
+    REG(&regs->BBB_I2C_IRQSTATUS) = err;
   
     sc = rtems_event_transient_send(bus->task_id);
     _Assert(sc == RTEMS_SUCCESSFUL);
@@ -513,12 +507,13 @@ static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
 
   regs = bus->regs;
   am335x_i2c_setup_transfer(bus,regs);
-  regs->BBB_I2C_IRQENABLE_SET = BBB_I2C_IRQ_USED;
+  REG(&regs->BBB_I2C_IRQENABLE_SET) = BBB_I2C_IRQ_USED;
 
   sc = rtems_event_transient_receive(RTEMS_WAIT, bus->base.timeout);
   // If timeout then return timeout error
   if (sc != RTEMS_SUCCESSFUL) {
     am335x_i2c_reset(bus);
+
     rtems_event_transient_clear();
 
     return -ETIMEDOUT;
@@ -533,10 +528,10 @@ static int am335x_i2c_set_clock(i2c_bus *base, unsigned long clock)
   uint32_t prescaler,divider;
  
   prescaler = (BBB_I2C_SYSCLK / BBB_I2C_INTERNAL_CLK) -1;
-  mmio_write((regs->BBB_I2C_PSC), prescaler);
+  mmio_write((&regs->BBB_I2C_PSC), prescaler); 
   divider = BBB_I2C_INTERNAL_CLK/(2*clock);
-  mmio_write((regs->BBB_I2C_SCLL), (divider - 7));
-  mmio_write((regs->BBB_I2C_CON), (divider - 5));
+  mmio_write((&regs->BBB_I2C_SCLL), (divider - 7));
+  mmio_write((&regs->BBB_I2C_CON), (divider - 5)); 
   return 0;
 }
 
@@ -567,16 +562,19 @@ int am335x_i2c_bus_register(
   if (bus == NULL) {
     return -1;
   }
-  bus->i2c_base_address = register_base;
+  bus->regs = (volatile bbb_i2c_regs *) register_base;
+
   am335x_i2c0_pinmux(bus);
   I2C0ModuleClkConfig();
-  bus->regs = (volatile bbb_i2c_regs *) register_base;
+  
   bus->input_clock = input_clock; // By default 100KHz. Normally pass 100KHz as argument 
   bus->irq = irq;
+  udelay(1000); 
   
-  /*Initialize members of bbb_i2c_bus above this line because following function will use them*/ 
+  printf("\n value is %x \n",bus->regs);
+  printf("\n checking %x \n",&bus->regs->BBB_I2C_CON);
   am335x_i2c_reset(bus);
- 
+
   err = am335x_i2c_set_clock(&bus->base, I2C_BUS_CLOCK_DEFAULT);
   
   if (err != 0) {
