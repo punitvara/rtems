@@ -385,7 +385,6 @@ typedef enum {
   I2C_COUNT
 }bbb_i2c_id_t;
 
-
 typedef struct i2c_regs 
 { 
   uint32_t BBB_I2C_REVNB_LO; // 0h
@@ -425,89 +424,21 @@ typedef struct i2c_regs
   uint32_t BBB_I2C_SBLOCK;  //D4h 212
 }bbb_i2c_regs;
 
-/*
-typedef struct i2c_regs {
-  unsigned short BBB_I2C_REVNB_LO;   // 0x00  
-  unsigned short dummy1;              
-  unsigned short BBB_I2C_REVNB_HI;    // 0x04 
-  unsigned short dummy2[5];
-  unsigned short BBB_I2C_SYSC;  // 0x10 = 16
-  unsigned short dummy3[9]; 
-  unsigned short BBB_I2C_IRQSTATUS_RAW; //0x24 = 36
-  unsigned short dummy4;
-  unsigned short BBB_I2C_IRQSTATUS; //0x28 = 40
-  unsigned short dummy5;
-  unsigned short BBB_I2C_IRQENABLE_SET; //0x2C = 44
-  unsigned short dummy6;
-  unsigned short BBB_I2C_IRQENABLE_CLR; //0x30 = 48
-  unsigned short dummy7;
-  unsigned short BBB_I2C_WE; // 0x34 = 52
-  unsigned short dummy8; 
-  unsigned short BBB_I2C_DMARXENABLE_SET; //0x38 = 56
-  unsigned short dummy9;
-  unsigned short BBB_I2C_DMATXENABLE_SET; //0x3c = 60
-  unsigned short dummy10;
-  unsigned short BBB_I2C_DMARXENABLE_CLR; //0x40 = 64
-  unsigned short dummy11;
-  unsigned short BBB_I2C_DMATXENABLE_CLR; //0x44 = 68
-  unsigned short dummy12;
-  unsigned short BBB_I2C_DMARXWAKE_EN; //0x48 = 72
-  unsigned short dummy13;
-  unsigned short BBB_I2C_DMATXWAKE_EN; //0x4c = 76
-  unsigned short dummy14[33]; 
-  unsigned short BBB_I2C_SYSS; //0x90 = 144
-  unsigned short dummy15;
-  unsigned short BBB_I2C_BUF; //0x94 = 148
-  unsigned short dummy16;
-  unsigned short BBB_I2C_CNT; //0x98 = 152
-  unsigned short dummy17;
-  unsigned short BBB_I2C_DATA; //0x9c = 156
-  unsigned short dummy18[3];
-  unsigned short BBB_I2C_CON; //0xA4 = 164
-  unsigned short dummy19;
-  unsigned short BBB_I2C_OA; //0xA8= 168
-  unsigned short dummy20;
-  unsigned short BBB_I2C_SA; //0xAC = 172
-  unsigned short dummy21;
-  unsigned short BBB_I2C_PSC; //0xB0 = 176
-  unsigned short dummy22;
-  unsigned short BBB_I2C_SCLL; //0xB4 = 180
-  unsigned short dummy23;
-  unsigned short BBB_I2C_SCLH; //0xB8 = 184
-  unsigned short dummy24;
-  unsigned short BBB_I2C_SYSTEST; //0xBC = 188
-  unsigned short dummy25;
-  unsigned short BBB_I2C_BUFSTAT; //0xc0 = 192
-  unsigned short dummy26;
-  unsigned short BBB_I2C_OA1; //0xc4 = 196 
-  unsigned short dummy27;
-  unsigned short BBB_I2C_OA2; //0xc8 = 200
-  unsigned short dummy28;
-  unsigned short BBB_I2C_OA3; //0xcc = 204
-  unsigned short dummy29;
-  unsigned short BBB_I2C_ACTOA; //0xd0 = 208 
-  unsigned short dummy30;
-  unsigned short BBB_I2C_SBLOCK; //0xd4 = 212 
-}bbb_i2c_regs;
-*/
-
-
 typedef struct bbb_i2c_bus{
   i2c_bus base;
   volatile bbb_i2c_regs *regs;
   i2c_msg *msgs;
-  uint32_t msg_todo;
-  uint32_t current_msg_todo;
-  uint8_t *current_msg_byte;
+  uint32_t msg_todo;  
+  uint32_t current_msg_todo; // current_data_size 
+  uint8_t *current_msg_byte; // current_data
   uint32_t current_todo;
   bool read;
   bool hold;
   rtems_id task_id;
   rtems_vector_number irq;
-  bbb_i2c_id_t i2c_bus_id;
   uint32_t input_clock;
-  int count;
-  }bbb_i2c_bus;
+  uint32_t already_transferred;
+} bbb_i2c_bus;
 
 int am335x_i2c_bus_register(
   const char *bus_path,

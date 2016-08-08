@@ -54,7 +54,7 @@ rtems_task Init(
 
   /* I2C EEPROM registration */
   rv = i2c_dev_register_eeprom(
-      BBB_I2C_2_BUS_PATH, // bus path
+      BBB_I2C_0_BUS_PATH, // bus path
       EEPROM_PATH, //dev path
       I2C_SLAVE_ADDR, // slave addr
       1, //address_byte
@@ -74,8 +74,7 @@ rtems_task Init(
   for ( i = 0; i < sizeof(in); ++i) {
     off = lseek(fd_in_dev, 0, SEEK_SET);
     rv = read(fd_in_dev,&in[0], sizeof(in));
-    printf("\n %s \n",&in[0]);
-
+    printf("\n %s \n ",in[i]);
   }
   close(fd_bus);
   unlink(BBB_I2C_2_BUS_PATH);
