@@ -366,9 +366,18 @@ static void am335x_i2c_set_address_size(const i2c_msg *msgs,volatile bbb_i2c_reg
   }
 }
 
-/*
 static void am335x_i2c_next_byte(bbb_i2c_bus *bus)
 {
+  i2c_msg *msg;
+
+  ++bus->msgs;
+  --bus->msg_todo;
+
+  msg = &bus->msgs[0];
+
+  bus->current_msg_todo = msg->len;
+  bus->current_msg_byte = msg->buf;
+/*
   --bus->current_msg_todo;
   ++bus->current_msg_byte;
   
@@ -376,15 +385,16 @@ static void am335x_i2c_next_byte(bbb_i2c_bus *bus)
     i2c_msg *msg;
     
   ++bus->msgs;
-  ++bus>msg_todo;
+  ++bus->msg_todo;
 
   msg = &bus->msgs[0];
  
   bus->current_msg_todo = msg->len;
   bus->current_msg_byte = msg->buf;
   }
-}
 */
+}
+
 static unsigned int am335x_i2c_intrawstatus(volatile bbb_i2c_regs *regs)
 {
   return (REG(&regs->BBB_I2C_IRQSTATUS_RAW));
@@ -405,41 +415,14 @@ static void am335x_int_clear(volatile bbb_i2c_regs *regs, unsigned int flag)
   REG(&regs->BBB_I2C_IRQSTATUS) = flag;
 }
 
+/*
 static void am335x_clean_interrupts(volatile bbb_i2c_regs *regs)
 {
   am335x_i2c_masterint_enable(regs,0x7FFF);
   am335x_int_clear(regs,0x7FFF);
   am335x_i2c_masterint_disable(regs,0x7FFF); 
 }
-
-static void am335x_i2c_continue_read_transfer(
-  bbb_i2c_bus *bus,
-  volatile bbb_i2c_regs *regs
-)
-{ 
-  bus->current_msg_byte[bus->already_transferred] = REG(&regs->BBB_I2C_DATA);
-  printk("\n bus->current_msg_byte %s \n", *bus->current_msg_byte);
-  bus->already_transferred++;
-  
-  am335x_int_clear(regs,AM335X_I2C_INT_RECV_READY);
-  if (bus->already_transferred == bus->current_msg_todo) {
-   // am335x_i2c_setup_read_transfer(regs,false);
-    am335x_i2c_masterint_disable(regs, AM335X_I2C_INT_RECV_READY);
-    REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP;
-  }
-}
-
-static void am335x_i2c_continue_write(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs)
-{
-   /*Transfer finished */
-   if (bus->already_transferred == bus->current_msg_todo) {
-     am335x_int_clear(regs, AM335X_I2C_IRQSTATUS_XRDY);
-     REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP;
-   } else { /*remaining bytes*/
-     REG(&regs->BBB_I2C_DATA) = bus->current_msg_byte[bus->already_transferred];
-     bus->already_transferred++;   
-   }
-}
+*/
 
 static void am335x_i2c_setup_read_transfer(volatile bbb_i2c_regs *regs, bool send_stop)
 {
@@ -460,10 +443,11 @@ static void am335x_i2c_setup_read_transfer(volatile bbb_i2c_regs *regs, bool sen
   while(0 != REG(&regs->BBB_I2C_CNT));
   while( !(am335x_i2c_intrawstatus(regs) & (AM335X_I2C_IRQSTATUS_ARDY)));
   */
+  printk("Enter read transfer \n");
    // No of data to be received at a time(msg_count!!)
   REG(&regs->BBB_I2C_CNT) = 50;
   // clear status of all interrupts
-  am335x_clean_interrupts(regs);
+  //am335x_clean_interrupts(regs);
 
   // I2C Controller in Master Mode
   REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_RX | AM335X_I2C_CON_I2C_EN;
@@ -478,15 +462,52 @@ static void am335x_i2c_setup_read_transfer(volatile bbb_i2c_regs *regs, bool sen
     REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_START;
   }
   while(am335x_i2c_busbusy(regs) == 0);
+  printk("Exit read transfer\n");
+}
+
+
+static void am335x_i2c_continue_read_transfer(
+  bbb_i2c_bus *bus,
+  volatile bbb_i2c_regs *regs
+)
+{
+  printk("enter continue read transfer \n");
+  bus->current_msg_byte[bus->already_transferred] = REG(&regs->BBB_I2C_DATA);
+  printk("\n bus->current_msg_byte %s \n", *bus->current_msg_byte);
+  bus->already_transferred++;
+  
+  am335x_int_clear(regs,AM335X_I2C_INT_RECV_READY);
+  if (bus->already_transferred == bus->current_msg_todo) {
+    printk("continue read transfer finished \n");
+    am335x_i2c_setup_read_transfer(regs,true);
+    am335x_i2c_masterint_disable(regs, AM335X_I2C_INT_RECV_READY);
+    REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP;
+  }
+}
+
+static void am335x_i2c_continue_write(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs)
+{
+   /*Transfer finished */
+   if (bus->already_transferred == bus->current_msg_todo) {
+     printk("finished transfer \n");
+     am335x_int_clear(regs, AM335X_I2C_IRQSTATUS_XRDY);
+     REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP;
+   } else { /*remaining bytes*/
+     printk("remaining byte \n");
+     REG(&regs->BBB_I2C_DATA) = bus->current_msg_byte[bus->already_transferred];
+     printk("%s",REG(&regs->BBB_I2C_DATA));
+     bus->already_transferred++;   
+   }
 }
 
 static void am335x_i2c_setup_write_transfer(bbb_i2c_bus *bus,volatile bbb_i2c_regs *regs)
 { 
   // Following data count specify bytes to be transmitted
-  //REG(&regs->BBB_I2C_CNT) = 0x02;
-  
+  REG(&regs->BBB_I2C_CNT) = 0x02;
+  printk(" \n Enter write transfer \n"); 
   // clear status of all interrupts
-  am335x_clean_interrupts(regs);
+  // Already cleaned during reset
+  // am335x_clean_interrupts(regs);
 
   // I2C Controller in Master transmitter Mode
   REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_TX | AM335X_I2C_CON_I2C_EN;
@@ -498,7 +519,7 @@ static void am335x_i2c_setup_write_transfer(bbb_i2c_bus *bus,volatile bbb_i2c_re
   while(am335x_i2c_busbusy(regs) == 0);
   while(0 != REG(&regs->BBB_I2C_CNT));
   while( !(am335x_i2c_intrawstatus(regs) & (AM335X_I2C_IRQSTATUS_ARDY)));
-
+  printk("exit setup write \n");
 }
 
 
@@ -510,13 +531,13 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
   uint32_t i;
   uint16_t slave_addr;
 
- 
+  printk("Enter setup transfer\n");
   bus->current_todo = msgs[0].len;
   for (i = 1; i < msg_todo && (msgs[i].flags & I2C_M_NOSTART) != 0; ++i) {
     bus->current_todo += msgs[i].len;
   }
   slave_addr = msgs->addr;
-
+  printk("\n slave address %x \n",msgs->addr);
   regs = bus->regs;
   
   REG(&bus->regs->BBB_I2C_BUF) |= AM335X_I2C_BUF_TXFIFO_CLR;
@@ -571,6 +592,9 @@ static void am335x_i2c_interrupt(void *arg)
   if (done) {
     uint32_t err = irqstatus & BBB_I2C_IRQ_ERROR;
     printk("interrupt done");
+   
+    am335x_i2c_next_byte(bus);
+
     if (bus->msg_todo == 0 || err != 0) {
     rtems_status_code sc;
   
@@ -594,7 +618,7 @@ static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
   bbb_i2c_bus *bus = (bbb_i2c_bus *)base;
   volatile bbb_i2c_regs *regs;
  // uint32_t i;
-
+ printk("\n enter transfer ");
   rtems_task_wake_after(1);
   
 
@@ -611,8 +635,10 @@ static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
  */
   bus->msgs = &msgs[0];
   bus->msg_todo = msg_count;
-  bus->current_msg_todo = msgs[0].len;
-  bus->current_msg_byte = msgs[0].buf;
+  bus->current_msg_todo = msgs[0].len;// current data size
+  bus->current_msg_byte = msgs[0].buf;// current data
+  printk("\n current_msg_todo %x \n ",msgs[0].len);
+  printk("\n current_msg_byte %x \n ",msgs[0].buf);
   bus->task_id = rtems_task_self();
 
   regs = bus->regs;
@@ -628,6 +654,7 @@ static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
 
     return -ETIMEDOUT;
   }
+  printk("exit transfer");
   // return bus->regs->BBB_I2C_IRQSTATUS == 0 ? 0 : -EIO;
   return 0;
 }
@@ -726,6 +753,6 @@ int am335x_i2c_bus_register(
   bus->base.transfer = am335x_i2c_transfer;
   bus->base.set_clock = am335x_i2c_set_clock;
   bus->base.destroy = am335x_i2c_destroy;
-
+  printk("\n exit register");
   return i2c_bus_register(&bus->base,bus_path);
 }
