@@ -369,7 +369,8 @@ static void am335x_i2c_set_address_size(const i2c_msg *msgs,volatile bbb_i2c_reg
 static void am335x_i2c_next_byte(bbb_i2c_bus *bus)
 {
   i2c_msg *msg;
-
+  
+  printk("Enter next_byte\n");
   ++bus->msgs;
   --bus->msg_todo;
 
@@ -377,22 +378,6 @@ static void am335x_i2c_next_byte(bbb_i2c_bus *bus)
 
   bus->current_msg_todo = msg->len;
   bus->current_msg_byte = msg->buf;
-/*
-  --bus->current_msg_todo;
-  ++bus->current_msg_byte;
-  
-  if (bus->current_msg_todo == 0) {
-    i2c_msg *msg;
-    
-  ++bus->msgs;
-  ++bus->msg_todo;
-
-  msg = &bus->msgs[0];
- 
-  bus->current_msg_todo = msg->len;
-  bus->current_msg_byte = msg->buf;
-  }
-*/
 }
 
 static unsigned int am335x_i2c_intrawstatus(volatile bbb_i2c_regs *regs)
@@ -503,7 +488,7 @@ static void am335x_i2c_continue_write(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
 static void am335x_i2c_setup_write_transfer(bbb_i2c_bus *bus,volatile bbb_i2c_regs *regs)
 { 
   // Following data count specify bytes to be transmitted
-  REG(&regs->BBB_I2C_CNT) = 0x02;
+  // REG(&regs->BBB_I2C_CNT) = 0x02;
   printk(" \n Enter write transfer \n"); 
   // clear status of all interrupts
   // Already cleaned during reset
