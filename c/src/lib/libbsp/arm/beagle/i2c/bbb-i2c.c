@@ -327,10 +327,10 @@ static bool am335x_i2c_busbusy(volatile bbb_i2c_regs *regs)
 static void am335x_i2c_reset(bbb_i2c_bus *bus)
 {
   volatile bbb_i2c_regs *regs = bus->regs;
-  printk("\n in bus->reg is %x \n",bus->regs);
+  printk("reset bus->reg is %x \n",bus->regs);
   /* Disable I2C module at the time of initialization*/
   /*Should I use write32 ?? I guess mmio_clear is correct choice here*/
-  printk("\n inside BBB_I2C_CON value is %x \n",&regs->BBB_I2C_CON);
+  printk("inside BBB_I2C_CON value is %x \n",&regs->BBB_I2C_CON);
   mmio_clear((&regs->BBB_I2C_CON),AM335X_I2C_CON_I2C_EN);
   mmio_clear((&regs->BBB_I2C_SYSC),AM335X_I2C_SYSC_AUTOIDLE);  
   //REG(bus->regs + AM335X_I2C_CON) &= ~(AM335X_I2C_CON_I2C_EN);
@@ -400,52 +400,63 @@ static void am335x_int_clear(volatile bbb_i2c_regs *regs, unsigned int flag)
   REG(&regs->BBB_I2C_IRQSTATUS) = flag;
 }
 
-/*
+
 static void am335x_clean_interrupts(volatile bbb_i2c_regs *regs)
 {
   am335x_i2c_masterint_enable(regs,0x7FFF);
   am335x_int_clear(regs,0x7FFF);
   am335x_i2c_masterint_disable(regs,0x7FFF); 
 }
-*/
 
-static void am335x_i2c_setup_read_transfer(volatile bbb_i2c_regs *regs, bool send_stop)
-{
-/*
+
+static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs, bool send_stop)
+{ /*
   //am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY);
    // No of data to be transmitted at a time
   REG(&regs->BBB_I2C_CNT) = 0x02;
   // clear status of all interrupts
   am335x_clean_interrupts(regs);
-
+  printk("\n set memory address to read\n");
   // I2C Controller in Master Mode
   REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_TX | AM335X_I2C_CON_I2C_EN;
+  printk("set master in transmission mode %x \n",REG(&regs->BBB_I2C_CON));
   // transmit interrupt is enabled
   am335x_i2c_masterint_enable(regs,AM335X_I2C_IRQSTATUS_XRDY);
+  printk("Enable transmit interrupt \n");
   //start condition 
   REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_START;
+  printk("start transmission \n");
   while(am335x_i2c_busbusy(regs) == 0);
-  while(0 != REG(&regs->BBB_I2C_CNT));
+  printk("bus is free \n"); 
+  printk("CNT : %x\n",REG(&regs->BBB_I2C_CNT));
+  while(0 != (REG(&regs->BBB_I2C_CNT)));
+  printk("total msg count for tranmission is zero \n");
   while( !(am335x_i2c_intrawstatus(regs) & (AM335X_I2C_IRQSTATUS_ARDY)));
   */
   printk("Enter read transfer \n");
    // No of data to be received at a time(msg_count!!)
-  REG(&regs->BBB_I2C_CNT) = 50;
+  printk("msg_todo for read is %d \n",bus->msg_todo);
+  REG(&regs->BBB_I2C_CNT) = bus->msg_todo;
+  
   // clear status of all interrupts
   //am335x_clean_interrupts(regs);
 
   // I2C Controller in Master Mode
   REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_RX | AM335X_I2C_CON_I2C_EN;
+  printk("Set master to receiver mode %x \n", REG(&regs->BBB_I2C_CON));
   // receive interrupt is enabled
   am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY | AM335X_I2C_CON_STOP);
   
   if (send_stop) {
     // stop condition
+    printk("stop to read\n");
     REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP; 
   } else {
     // start condition
+    printk("start to read\n");
     REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_START;
   }
+
   while(am335x_i2c_busbusy(regs) == 0);
   printk("Exit read transfer\n");
 }
@@ -458,52 +469,81 @@ static void am335x_i2c_continue_read_transfer(
 {
   printk("enter continue read transfer \n");
   bus->current_msg_byte[bus->already_transferred] = REG(&regs->BBB_I2C_DATA);
-  printk("\n bus->current_msg_byte %s \n", *bus->current_msg_byte);
   bus->already_transferred++;
-  
   am335x_int_clear(regs,AM335X_I2C_INT_RECV_READY);
-  if (bus->already_transferred == bus->current_msg_todo) {
+  printk("clear RRDY in continue read transfer\n");
+  
+  if (bus->already_transferred == REG(&regs->BBB_I2C_CNT)) {
     printk("continue read transfer finished \n");
-    am335x_i2c_setup_read_transfer(regs,true);
+    //am335x_i2c_setup_read_transfer(bus,regs,false);
     am335x_i2c_masterint_disable(regs, AM335X_I2C_INT_RECV_READY);
+    printk("disable RRDY in continue read transfer\n");
     REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP;
+    printk("stop condition in continue read transfer %x\n",REG(&regs->BBB_I2C_CON));
   }
 }
 
 static void am335x_i2c_continue_write(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs)
-{
-   /*Transfer finished */
-   if (bus->already_transferred == bus->current_msg_todo) {
+{ 
+   
+   am335x_int_clear(regs, AM335X_I2C_IRQSTATUS_XRDY);
+   printk("clear XRDY continue write\n");
+   
+   if (bus->already_transferred == REG(&regs->BBB_I2C_CNT)) {
+   printk("\n finished transfer \n");
+   am335x_i2c_masterint_disable(regs, AM335X_I2C_IRQSTATUS_XRDY);
+   printk("disable XRDY continue write \n");
+   REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP;
+   } else {
+     printk("write memory address \n");
+     REG(&regs->BBB_I2C_DATA) = *bus->current_msg_byte;
+  }
+   
+
+  /* 
+   if (bus->already_transferred == bus->msg_todo) {
      printk("finished transfer \n");
      am335x_int_clear(regs, AM335X_I2C_IRQSTATUS_XRDY);
      REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_STOP;
-   } else { /*remaining bytes*/
+   } else { 
      printk("remaining byte \n");
      REG(&regs->BBB_I2C_DATA) = bus->current_msg_byte[bus->already_transferred];
      printk("%s",REG(&regs->BBB_I2C_DATA));
      bus->already_transferred++;   
    }
+   */
 }
 
 static void am335x_i2c_setup_write_transfer(bbb_i2c_bus *bus,volatile bbb_i2c_regs *regs)
 { 
-  // Following data count specify bytes to be transmitted
-  // REG(&regs->BBB_I2C_CNT) = 0x02;
   printk(" \n Enter write transfer \n"); 
+ 
+  // Following data count specify bytes to be transmitted
+  REG(&regs->BBB_I2C_CNT) = bus->msg_todo;
+   
   // clear status of all interrupts
   // Already cleaned during reset
-  // am335x_clean_interrupts(regs);
-
+  am335x_clean_interrupts(regs);
+  
   // I2C Controller in Master transmitter Mode
   REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_TX | AM335X_I2C_CON_I2C_EN;
-  REG(&regs->BBB_I2C_CNT) = *bus->current_msg_byte;
+  printk("enable master in transmiter mode setup write %x\n",REG(&regs->BBB_I2C_CON));
+  
   // transmit interrupt is enabled
   am335x_i2c_masterint_enable(regs,AM335X_I2C_IRQSTATUS_XRDY);
+  printk("enable XRDY setup write\n");
+ 
   //start condition 
   REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_START;
+  printk("set start condition in setup write %x \n",REG(&regs->BBB_I2C_CON));
+  
   while(am335x_i2c_busbusy(regs) == 0);
-  while(0 != REG(&regs->BBB_I2C_CNT));
-  while( !(am335x_i2c_intrawstatus(regs) & (AM335X_I2C_IRQSTATUS_ARDY)));
+  printk("CNT in setup write : %x \n",REG(&regs->BBB_I2C_CNT));
+  printk("setup write msg_todo %x \n",bus->current_todo);
+  while(bus->current_todo != REG(&regs->BBB_I2C_CNT));
+  printk("check whether ???\n");
+  printk("RAW =  %x",REG(&regs->BBB_I2C_IRQSTATUS_RAW));
+  while( !((am335x_i2c_intrawstatus(regs)) & (AM335X_I2C_IRQSTATUS_ARDY)));
   printk("exit setup write \n");
 }
 
@@ -518,9 +558,11 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
 
   printk("Enter setup transfer\n");
   bus->current_todo = msgs[0].len;
+
   for (i = 1; i < msg_todo && (msgs[i].flags & I2C_M_NOSTART) != 0; ++i) {
     bus->current_todo += msgs[i].len;
   }
+
   slave_addr = msgs->addr;
   printk("\n slave address %x \n",msgs->addr);
   regs = bus->regs;
@@ -528,14 +570,17 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
   REG(&bus->regs->BBB_I2C_BUF) |= AM335X_I2C_BUF_TXFIFO_CLR;
   REG(&bus->regs->BBB_I2C_BUF) |= AM335X_I2C_BUF_RXFIFO_CLR;
   am335x_i2c_set_address_size(msgs,regs,slave_addr);
-  bus->read = (msgs->flags & I2C_M_RD) != 0; 
+  bus->read = ((bus->read == true) ? 0:1); 
   bus->already_transferred = (bus->read == true) ? 0 : 1;
+
   if (bus->read) {
-    if (bus->current_msg_todo == 1) {
+    if (REG(&regs->BBB_I2C_CNT) == 1) {
       send_stop = true;
     }
-    am335x_i2c_setup_read_transfer(regs, send_stop);
+    printk("configure to read bus\n");
+    am335x_i2c_setup_read_transfer(bus,regs, send_stop);
   } else {
+    printk("configure to write bus\n");
     am335x_i2c_setup_write_transfer(bus,regs);
   }
   
@@ -551,7 +596,7 @@ static void am335x_i2c_interrupt(void *arg)
   printk("\n inside interrupt function \n");
   /* Clear all enabled interrupt except receive ready and transmit ready interrupt in status register */ 
   REG(&regs->BBB_I2C_IRQSTATUS) = (irqstatus & ~(AM335X_I2C_IRQSTATUS_RRDY | AM335X_I2C_IRQSTATUS_XRDY));
-  printk("\n %x \n",REG(&regs->BBB_I2C_IRQSTATUS));
+  printk("\n irqstatus = %x \n",REG(&regs->BBB_I2C_IRQSTATUS));
 
   if (irqstatus & AM335X_I2C_INT_RECV_READY) {
      printk("\nInside receive interrupt\n");
@@ -565,18 +610,18 @@ static void am335x_i2c_interrupt(void *arg)
  
   if (irqstatus & AM335X_I2C_IRQSTATUS_NACK) {
     done = true;
-    printk("inside NACK");
+    printk("inside NACK\n");
     am335x_i2c_masterint_disable(regs,AM335X_I2C_IRQSTATUS_NACK);
   }
 
   if (irqstatus & AM335X_I2C_IRQSTATUS_BF) {
     done = true;
-    printk("inside BF");
+    printk("inside BF \n ");
   }
 
   if (done) {
     uint32_t err = irqstatus & BBB_I2C_IRQ_ERROR;
-    printk("interrupt done");
+    printk("interrupt done \n");
    
     am335x_i2c_next_byte(bus);
 
@@ -602,7 +647,7 @@ static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
   rtems_status_code sc;
   bbb_i2c_bus *bus = (bbb_i2c_bus *)base;
   volatile bbb_i2c_regs *regs;
- // uint32_t i;
+  uint32_t i;
  printk("\n enter transfer ");
   rtems_task_wake_after(1);
   
@@ -611,15 +656,15 @@ static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
     return 1;
   }
  
-/* 
   for (i=0; i<msg_count;++i) {
       if ((msgs[i].flags & I2C_M_RECV_LEN) != 0) {
         return -EINVAL;
       }
   }
- */
+  
   bus->msgs = &msgs[0];
   bus->msg_todo = msg_count;
+  printk("total msg = msg_count : %x \n",bus->msg_todo);
   bus->current_msg_todo = msgs[0].len;// current data size
   bus->current_msg_byte = msgs[0].buf;// current data
   printk("\n current_msg_todo %x \n ",msgs[0].len);
@@ -639,7 +684,7 @@ static int am335x_i2c_transfer(i2c_bus *base, i2c_msg *msgs, uint32_t msg_count)
 
     return -ETIMEDOUT;
   }
-  printk("exit transfer");
+  printk("exit transfer\n");
   // return bus->regs->BBB_I2C_IRQSTATUS == 0 ? 0 : -EIO;
   return 0;
 }
@@ -650,21 +695,21 @@ static int am335x_i2c_set_clock(i2c_bus *base, unsigned long clock)
   volatile bbb_i2c_regs *regs = bus->regs;
   uint32_t prescaler,divider;
 
-  printk("\nset clock start"); 
+  printk("set clock start\n"); 
   prescaler = (BBB_I2C_SYSCLK / BBB_I2C_INTERNAL_CLK) -1;
-  printk("\n &regs-> %x \n ",&regs->BBB_I2C_PSC);
-  printk("\n bus-> %x \n", &bus->regs->BBB_I2C_PSC);
+  printk("PSC offset %x \n ",&regs->BBB_I2C_PSC);
+  printk("PSC offset %x \n", &bus->regs->BBB_I2C_PSC);
   //mmio_write((&regs->BBB_I2C_PSC), prescaler);
   REG(&bus->regs->BBB_I2C_PSC) = prescaler;
   
   divider = BBB_I2C_INTERNAL_CLK/(2*clock);
-  printk("\n %x \n",&bus->regs->BBB_I2C_SCLL); 
+  printk("SCLL offset %x \n",&bus->regs->BBB_I2C_SCLL); 
   //mmio_write((&regs->BBB_I2C_SCLL), (divider - 7));
   REG(&bus->regs->BBB_I2C_SCLL) = (divider - 7);
   //mmio_write((&regs->BBB_I2C_SCLH), (divider - 5));
-  printk("\n %x\n",&bus->regs->BBB_I2C_SCLH);
+  printk("SCHL offset %x\n",&bus->regs->BBB_I2C_SCLH);
   REG(&bus->regs->BBB_I2C_SCLH) = (divider - 5);
-  printk("\n set clock endi \n");
+  printk("set clock end \n");
   return 0;
 }
 
@@ -672,11 +717,11 @@ static void am335x_i2c_destroy(i2c_bus *base)
 {
   bbb_i2c_bus *bus = (bbb_i2c_bus *) base;
   rtems_status_code sc;
-  printk(" starting destroy "); 
+  printk(" starting destroy\n"); 
   sc = rtems_interrupt_handler_remove(bus->irq, am335x_i2c_interrupt, bus);
   _Assert(sc == RTEMS_SUCCESSFUL);
   (void)sc;
-  printk("end destroy");
+  printk("end destroy\n");
   i2c_bus_destroy_and_free(&bus->base);
 }
 
@@ -710,7 +755,7 @@ int am335x_i2c_bus_register(
 // 4. configure bus speed  
   bus->input_clock = input_clock; // By default 100KHz. Normally pass 100KHz as argument 
  
-  printk("Before set clock"); 
+  printk("Before set clock \n"); 
   err = am335x_i2c_set_clock(&bus->base, I2C_BUS_CLOCK_DEFAULT);
  
   if (err != 0) {
@@ -719,6 +764,10 @@ int am335x_i2c_bus_register(
     rtems_set_errno_and_return_minus_one(-err);
   }
    bus->irq = irq;
+  
+  //bring I2C out of reset
+
+   REG(&bus->regs->BBB_I2C_CON) |= AM335X_I2C_CON_I2C_EN;
  
   // 5. Start interrupt service routine & one interrupt at a time 
   sc  = rtems_interrupt_handler_install(
@@ -738,6 +787,6 @@ int am335x_i2c_bus_register(
   bus->base.transfer = am335x_i2c_transfer;
   bus->base.set_clock = am335x_i2c_set_clock;
   bus->base.destroy = am335x_i2c_destroy;
-  printk("\n exit register");
+  printk("exit register\n");
   return i2c_bus_register(&bus->base,bus_path);
 }

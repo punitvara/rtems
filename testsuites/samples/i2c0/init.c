@@ -48,8 +48,10 @@ rtems_task Init(
 
   /*bus registration */
   rv = bbb_register_i2c_0();
+  printf("bus registration \n");
   // bus_PATH, i2c_base, clock_speed, irq
   fd_bus = open(BBB_I2C_0_BUS_PATH, O_RDWR);
+  printf("open bus \n");
   //assert(fd_bus >= 0);
 
   /* I2C EEPROM registration */
@@ -62,10 +64,10 @@ rtems_task Init(
       32, // size_in_bytes
       0 // program time out in ms
      );
-
+  printf("register EEPROM \n");
   fd_in_dev = open(EEPROM_PATH, O_RDWR);
   _Assert(fd_in_dev >=0);
-
+  printf("open eeprom \n");
   rv = fstat(fd_in_dev, &st);
   _Assert(rv == 0);
   _Assert(st.st_blksize == 8);
@@ -76,6 +78,7 @@ rtems_task Init(
     rv = read(fd_in_dev,&in[0], sizeof(in));
     printf("\n %s \n ",in[i]);
   }
+  printf("EXIT from test case");
   close(fd_bus);
   unlink(BBB_I2C_2_BUS_PATH);
   
