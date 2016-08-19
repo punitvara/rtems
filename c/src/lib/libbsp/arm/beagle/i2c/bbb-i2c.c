@@ -410,10 +410,13 @@ static void am335x_clean_interrupts(volatile bbb_i2c_regs *regs)
 
 
 static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs, bool send_stop)
-{ /*
+{ 
+  volatile unsigned int no_bytes;
   //am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY);
    // No of data to be transmitted at a time
   REG(&regs->BBB_I2C_CNT) = 0x02;
+  no_bytes = REG(&regs->BBB_I2C_CNT);
+
   // clear status of all interrupts
   am335x_clean_interrupts(regs);
   printk("\n set memory address to read\n");
@@ -428,11 +431,11 @@ static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_re
   printk("start transmission \n");
   while(am335x_i2c_busbusy(regs) == 0);
   printk("bus is free \n"); 
-  printk("CNT : %x\n",REG(&regs->BBB_I2C_CNT));
-  while(0 != (REG(&regs->BBB_I2C_CNT)));
+  printk("CNT : %x\n", no_bytes);
+  while(0 != no_bytes);
   printk("total msg count for tranmission is zero \n");
   while( !(am335x_i2c_intrawstatus(regs) & (AM335X_I2C_IRQSTATUS_ARDY)));
-  */
+  
   printk("Enter read transfer \n");
    // No of data to be received at a time(msg_count!!)
   printk("msg_todo for read is %d \n",bus->msg_todo);
@@ -485,10 +488,10 @@ static void am335x_i2c_continue_read_transfer(
 
 static void am335x_i2c_continue_write(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs)
 { 
-   
+   REG(&regs->BBB_I2C_DATA) = 0x00;
    am335x_int_clear(regs, AM335X_I2C_IRQSTATUS_XRDY);
    printk("clear XRDY continue write\n");
-   
+   /*
    if (bus->already_transferred == REG(&regs->BBB_I2C_CNT)) {
    printk("\n finished transfer \n");
    am335x_i2c_masterint_disable(regs, AM335X_I2C_IRQSTATUS_XRDY);
@@ -498,7 +501,7 @@ static void am335x_i2c_continue_write(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
      printk("write memory address \n");
      REG(&regs->BBB_I2C_DATA) = *bus->current_msg_byte;
   }
-   
+   */
 
   /* 
    if (bus->already_transferred == bus->msg_todo) {
@@ -515,12 +518,13 @@ static void am335x_i2c_continue_write(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
 }
 
 static void am335x_i2c_setup_write_transfer(bbb_i2c_bus *bus,volatile bbb_i2c_regs *regs)
-{ 
+{
+  volatile unsigned int no_bytes; 
   printk(" \n Enter write transfer \n"); 
  
   // Following data count specify bytes to be transmitted
   REG(&regs->BBB_I2C_CNT) = bus->msg_todo;
-   
+  no_bytes = REG(&regs->BBB_I2C_CNT);
   // clear status of all interrupts
   // Already cleaned during reset
   am335x_clean_interrupts(regs);
@@ -540,7 +544,7 @@ static void am335x_i2c_setup_write_transfer(bbb_i2c_bus *bus,volatile bbb_i2c_re
   while(am335x_i2c_busbusy(regs) == 0);
   printk("CNT in setup write : %x \n",REG(&regs->BBB_I2C_CNT));
   printk("setup write msg_todo %x \n",bus->current_todo);
-  while(bus->current_todo != REG(&regs->BBB_I2C_CNT));
+  while(0 != no_bytes);
   printk("check whether ???\n");
   printk("RAW =  %x",REG(&regs->BBB_I2C_IRQSTATUS_RAW));
   while( !((am335x_i2c_intrawstatus(regs)) & (AM335X_I2C_IRQSTATUS_ARDY)));
