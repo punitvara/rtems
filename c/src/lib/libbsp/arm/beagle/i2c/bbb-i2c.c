@@ -354,17 +354,15 @@ Possible values for msg->flag
    * - @ref I2C_M_RECV_LEN.
 */
 
-static void am335x_i2c_set_address_size(const i2c_msg *msgs,volatile bbb_i2c_regs *regs, uint16_t slave_addr)
+static void am335x_i2c_set_address_size(const i2c_msg *msgs,volatile bbb_i2c_regs *regs)
 {
-  // Set Slave address & Master enable, bring out of reset
-  mmio_write(&regs->BBB_I2C_CON, (slave_addr | AM335X_I2C_CON_I2C_EN));
-  /*can be configured multiple modes here. Need to think about own address modes*/
+    /*can be configured multiple modes here. Need to think about own address modes*/
   if ((msgs->flags & I2C_M_TEN) == 0)  {/* 7-bit mode slave address mode*/
   mmio_write(&regs->BBB_I2C_CON,(AM335X_I2C_CFG_7BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN)); 
   } else { /* 10-bit slave address mode*/
   mmio_write(&regs->BBB_I2C_CON,(AM335X_I2C_CFG_10BIT_SLAVE_ADDR | AM335X_I2C_CON_I2C_EN));
   }
-}
+  }
 
 static void am335x_i2c_next_byte(bbb_i2c_bus *bus)
 {
@@ -409,7 +407,7 @@ static void am335x_clean_interrupts(volatile bbb_i2c_regs *regs)
 }
 
 
-static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs, bool send_stop)
+static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *regs, const i2c_msg *msgs, bool send_stop)
 { 
   volatile unsigned int no_bytes;
   //am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY);
@@ -417,12 +415,18 @@ static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_re
   REG(&regs->BBB_I2C_CNT) = 0x02;
   no_bytes = REG(&regs->BBB_I2C_CNT);
 
+  // I2C Controller in Master Mode
+  REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_TX | AM335X_I2C_CON_I2C_EN | AM335X_I2C_CON_START | AM335X_I2C_CON_MST;
+  printk("set master in transmission mode %x \n",REG(&regs->BBB_I2C_CON));
+
+  // Set Slave address & Master enable, bring out of reset
+  REG(&regs->BBB_I2C_SA) = msgs->addr;
+  printf("slave address : %x\n",REG(&regs->BBB_I2C_SA));
+
   // clear status of all interrupts
   am335x_clean_interrupts(regs);
   printk("\n set memory address to read\n");
-  // I2C Controller in Master Mode
-  REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_TX | AM335X_I2C_CON_I2C_EN;
-  printk("set master in transmission mode %x \n",REG(&regs->BBB_I2C_CON));
+    
   // transmit interrupt is enabled
   am335x_i2c_masterint_enable(regs,AM335X_I2C_IRQSTATUS_XRDY);
   printk("Enable transmit interrupt \n");
@@ -445,10 +449,10 @@ static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_re
   //am335x_clean_interrupts(regs);
 
   // I2C Controller in Master Mode
-  REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_RX | AM335X_I2C_CON_I2C_EN;
+  REG(&regs->BBB_I2C_CON) = AM335X_I2C_CFG_MST_RX | AM335X_I2C_CON_I2C_EN | AM335X_I2C_CON_MST;
   printk("Set master to receiver mode %x \n", REG(&regs->BBB_I2C_CON));
   // receive interrupt is enabled
-  am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY | AM335X_I2C_CON_STOP);
+  am335x_i2c_masterint_enable(regs, AM335X_I2C_INT_RECV_READY | AM335X_I2C_INT_STOP_CONDITION);
   
   if (send_stop) {
     // stop condition
@@ -459,7 +463,6 @@ static void am335x_i2c_setup_read_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_re
     printk("start to read\n");
     REG(&regs->BBB_I2C_CON) |= AM335X_I2C_CON_START;
   }
-
   while(am335x_i2c_busbusy(regs) == 0);
   printk("Exit read transfer\n");
 }
@@ -558,7 +561,6 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
   uint32_t msg_todo = bus->msg_todo;
   bool send_stop = false;
   uint32_t i;
-  uint16_t slave_addr;
 
   printk("Enter setup transfer\n");
   bus->current_todo = msgs[0].len;
@@ -567,13 +569,11 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
     bus->current_todo += msgs[i].len;
   }
 
-  slave_addr = msgs->addr;
-  printk("\n slave address %x \n",msgs->addr);
   regs = bus->regs;
   
   REG(&bus->regs->BBB_I2C_BUF) |= AM335X_I2C_BUF_TXFIFO_CLR;
   REG(&bus->regs->BBB_I2C_BUF) |= AM335X_I2C_BUF_RXFIFO_CLR;
-  am335x_i2c_set_address_size(msgs,regs,slave_addr);
+  am335x_i2c_set_address_size(msgs,regs);
   bus->read = ((bus->read == true) ? 0:1); 
   bus->already_transferred = (bus->read == true) ? 0 : 1;
 
@@ -582,7 +582,7 @@ static void am335x_i2c_setup_transfer(bbb_i2c_bus *bus, volatile bbb_i2c_regs *r
       send_stop = true;
     }
     printk("configure to read bus\n");
-    am335x_i2c_setup_read_transfer(bus,regs, send_stop);
+    am335x_i2c_setup_read_transfer(bus,regs,msgs,send_stop);
   } else {
     printk("configure to write bus\n");
     am335x_i2c_setup_write_transfer(bus,regs);

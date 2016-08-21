@@ -25,8 +25,8 @@
 
 /* I2C address of CAT24C256 eeprom
    EEPROM SIZE 32 KB Ref: BBB SRM */
-#define  I2C_SLAVE_ADDR         (0x50)
-#define EEPROM_SIZE 32
+#define I2C_SLAVE_ADDR         (0x50)
+#define EEPROM_SIZE 256
 #define EEPROM_PATH "/dev/i2c-0.eeprom"
 
 /* forward declarations to avoid warnings */
@@ -59,9 +59,9 @@ rtems_task Init(
       BBB_I2C_0_BUS_PATH, // bus path
       EEPROM_PATH, //dev path
       I2C_SLAVE_ADDR, // slave addr
-      1, //address_byte
-      8, // page_size_in_bytes
-      32, // size_in_bytes
+      2, //address_byte
+      64, // page_size_in_bytes
+      256, // size_in_bytes
       0 // program time out in ms
      );
   printf("register EEPROM \n");
