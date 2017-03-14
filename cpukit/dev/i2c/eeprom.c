@@ -55,6 +55,7 @@ static ssize_t eeprom_read(
   off_t offset
 )
 {
+
   eeprom *dev = (eeprom *) base;
   off_t avail = dev->size - offset;
   uint32_t off = (uint32_t) offset;
@@ -86,6 +87,17 @@ static ssize_t eeprom_read(
       (uint8_t) (off >> 16),
       (uint8_t) (off >> 24)
     };
+
+    i2c_msg msgs[1] = {
+        {
+        .addr = i2c_addr,
+        .flags = I2C_M_RD,
+        .buf = in,
+        .len = cur
+      }
+    };
+    
+    /*
     i2c_msg msgs[2] = {
       {
         .addr = i2c_addr,
@@ -99,14 +111,22 @@ static ssize_t eeprom_read(
         .len = cur
       }
     };
+    
+
+    */
     int err;
+    
+    
 
     err = i2c_bus_transfer(dev->base.bus, &msgs[0], RTEMS_ARRAY_SIZE(msgs));
+
+    
     if (err != 0) {
       return err;
     }
-
+  
     todo -= cur;
+
     off += cur;
     in += cur;
   }
@@ -236,7 +256,7 @@ int i2c_dev_register_eeprom(
   }
 
   if (program_timeout_in_ms == 0) {
-    program_timeout_in_ms = 1000;
+    program_timeout_in_ms = 5000;
   }
 
   dev = (eeprom *)
