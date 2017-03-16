@@ -29,11 +29,11 @@ rtems_task Init(
   rtems_task_argument ignored
 )
 {
-  rtems_print_printer_printf(&rtems_test_printer);
-  rtems_test_begin();
-  printf( "Hello World\n" );
-  rtems_test_end();
-  exit( 0 );
+  printf( "\n\n*** GSOC 2017 HELLO WORLD TEST ***\n" );
+printf( "This is Sichen Zhao's Hello World\n" );
+printf( "Welcome to RTEMS and Google Summer of Code 2017\n" );
+printf( "*** END OF GSOC 2017 HELLO WORLD TEST ***\n" );
+   exit( 0 );
 }
 
 
