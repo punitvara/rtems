@@ -132,11 +132,11 @@ extern "C" {
 
 
 #define DISP_LINE_LEN 128
-#define I2C_TIMEOUT 1000
+#define I2C_TIMEOUT 1001
 
 #define I2C_BUS_MAX 3
 
-#define I2C_BASE1         (OMAP34XX_CORE_L4_IO_BASE + 0x070000)
+#define I2C_BASE1         (OMAP34XX_CORE_L4_IO_BASE + 0x070000) //0x48000000+0x070000
 
 #define I2C_DEFAULT_BASE      I2C_BASE1
 
@@ -356,7 +356,7 @@ static inline rtems_status_code beagle_i2c_read(
     | AM335X_I2C_IRQSTATUS_ARDY \
     | AM335X_I2C_IRQSTATUS_RRDY \
     | AM335X_I2C_IRQSTATUS_XRDY \
-    | AM335X_I2C_IRQSTATUS_XUDF)
+    | AM335X_I2C_IRQSTATUS_XUDF )
 
 #define BBB_I2C_IRQ_USED \
   ( BBB_I2C_IRQ_ERROR \
@@ -476,6 +476,18 @@ static inline int bbb_register_i2c_2(void)
     BBB_I2C2_IRQ
   );
 }
+
+
+struct am335x_baseboard_id {
+	unsigned int  magic;
+	char name[8];
+	char version[4];
+	char serial[12];
+	char config[32];
+	char mac_addr[3][6];
+};
+
+
 
 
 #ifdef __cplusplus

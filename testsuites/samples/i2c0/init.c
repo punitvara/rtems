@@ -23,10 +23,62 @@
 #include <rtems/score/assert.h>
 #include <dev/i2c/eeprom.h>
 
+#include <rtems/shell.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <rtems/userenv.h>
+
+#define CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
+#define CONFIGURE_APPLICATION_NEEDS_CONSOLE_DRIVER
+#define CONFIGURE_APPLICATION_NEEDS_STUB_DRIVER
+#define CONFIGURE_APPLICATION_NEEDS_ZERO_DRIVER
+#define CONFIGURE_APPLICATION_NEEDS_LIBBLOCK
+
+#define CONFIGURE_USE_IMFS_AS_BASE_FILESYSTEM
+
+#define CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS 32
+
+#define CONFIGURE_MAXIMUM_USER_EXTENSIONS 1
+
+#define CONFIGURE_UNLIMITED_ALLOCATION_SIZE 32
+#define CONFIGURE_UNLIMITED_OBJECTS
+#define CONFIGURE_UNIFIED_WORK_AREAS
+
+#define CONFIGURE_STACK_CHECKER_ENABLED
+
+#define CONFIGURE_RTEMS_INIT_TASKS_TABLE
+
+#define CONFIGURE_INIT_TASK_INITIAL_MODES RTEMS_DEFAULT_MODES
+#define CONFIGURE_INIT_TASK_ATTRIBUTES RTEMS_FLOATING_POINT
+
+#define CONFIGURE_INIT
+
+#include <rtems/confdefs.h>
+
+
+#define CONFIGURE_SHELL_COMMAND_CP
+#define CONFIGURE_SHELL_COMMAND_PWD
+#define CONFIGURE_SHELL_COMMAND_LS
+#define CONFIGURE_SHELL_COMMAND_LN
+#define CONFIGURE_SHELL_COMMAND_LSOF
+#define CONFIGURE_SHELL_COMMAND_CHDIR
+#define CONFIGURE_SHELL_COMMAND_CD
+#define CONFIGURE_SHELL_COMMAND_MKDIR
+#define CONFIGURE_SHELL_COMMAND_RMDIR
+#define CONFIGURE_SHELL_COMMAND_CAT
+#define CONFIGURE_SHELL_COMMAND_MV
+#define CONFIGURE_SHELL_COMMAND_RM
+#define CONFIGURE_SHELL_COMMAND_MALLOC_INFO
+#include <rtems/shellconfig.h>
+
+
 /* I2C address of CAT24C256 eeprom
    EEPROM SIZE 32 KB Ref: BBB SRM */
 #define I2C_SLAVE_ADDR         (0x50)
-#define EEPROM_SIZE 256
+#define EEPROM_SIZE 78
 #define EEPROM_PATH "/dev/i2c-0.eeprom"
 
 /* forward declarations to avoid warnings */
@@ -35,16 +87,23 @@ rtems_task Init(rtems_task_argument argument);
 const char rtems_test_name[] = "GSOC 2016 I2C TESTING";
 rtems_printer rtems_test_printer;
 
+
 rtems_task Init(
   rtems_task_argument ignored
 )
 {
+  
   rtems_test_begin();
   int i;
   int rv,fd_bus,fd_in_dev;
   uint8_t in[EEPROM_SIZE];
   struct stat st;
   off_t off;
+  ssize_t n;
+
+  rtems_shell_env_t env;
+
+  
 
   /*bus registration */
   rv = bbb_register_i2c_0();
@@ -64,23 +123,55 @@ rtems_task Init(
       256, // size_in_bytes
       0 // program time out in ms
      );
+  
+ 
+
+ _Assert(rv == 0);
+// exit( 0 );
   printf("register EEPROM \n");
   fd_in_dev = open(EEPROM_PATH, O_RDWR);
+  printf("fd_in_dev:%d\n", fd_in_dev);
   _Assert(fd_in_dev >=0);
+
+
   printf("open eeprom \n");
   rv = fstat(fd_in_dev, &st);
   _Assert(rv == 0);
   _Assert(st.st_blksize == 8);
   _Assert(st.st_size == sizeof(in));
 
+printf("read func\n");
+
+  n = read(fd_in_dev, &in[0], sizeof(in));
+   printf("n:%d\n",n );
+ printf("The EEPROM INFO.:\n");
+
+ for(i=0;i<sizeof(in);++i)
+   {
+printf(" %x,",in[i]);
+
+   }
+   
+  
+
+   printf("sizeof(in):%d\n", sizeof(in));
+
+  
+   
+   // _Assert(n == -1);
+/*
+printf("test\n");
   for ( i = 0; i < sizeof(in); ++i) {
+    printf("i:%d\n",i);
     off = lseek(fd_in_dev, 0, SEEK_SET);
+    printf("lseek func done!\n");
     rv = read(fd_in_dev,&in[0], sizeof(in));
-    printf("\n %s \n ",in[i]);
+   // printf("\n %s \n ",in[i]);
   }
+  */
   printf("EXIT from test case");
   close(fd_bus);
-  unlink(BBB_I2C_2_BUS_PATH);
+ unlink(BBB_I2C_2_BUS_PATH);
   
   rtems_test_end();
 }
