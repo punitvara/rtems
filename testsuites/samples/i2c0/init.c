@@ -144,12 +144,11 @@ printf("read func\n");
 
   n = read(fd_in_dev, &in[0], sizeof(in));
    printf("n:%d\n",n );
-    printf("0:%x, ",in[0]);
-   printf("1:%x, ",in[1]);
+ printf("The EEPROM INFO.:\n");
 
  for(i=0;i<sizeof(in);++i)
    {
-printf("%x\n",in[i]);
+printf(" %x,",in[i]);
 
    }
    
